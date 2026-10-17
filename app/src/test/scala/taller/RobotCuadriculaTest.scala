@@ -79,6 +79,38 @@ class RobotCuadriculaTest extends AnyFunSuite {
     assert(ejecutar(Estado(5, 5, Oeste), Avanzar(2)) == Estado(3, 5, Oeste))
   }
 
+    // Punto 2 (propias) ---------------------------------------------------------
+
+  test("propia ejecutar: avanzar cuatro mirando al este desde (1, 1)") {
+    assert(ejecutar(Estado(1, 1, Este), Avanzar(4)) == Estado(5, 1, Este))
+  }
+
+  test("propia ejecutar: girar a la izquierda no mueve al robot") {
+    assert(ejecutar(inicial, Girar(Izquierda)) == Estado(0, 0, Oeste))
+  }
+
+  test("propia ejecutar: repetir tres veces un avance de dos") {
+    assert(ejecutar(inicial, Repetir(3, Avanzar(2))) == Estado(0, 6, Norte))
+  }
+
+  test("propia ejecutar: repetir con veces negativas no hace nada") {
+    assert(ejecutar(Estado(2, 3, Sur), Repetir(-2, Avanzar(1))) == Estado(2, 3, Sur))
+  }
+
+  test("propia ejecutar: avance, giro a la izquierda y avance") {
+    assert(ejecutar(inicial, Secuencia(List(Avanzar(3), Girar(Izquierda), Avanzar(2)))) ==
+      Estado(-2, 3, Oeste))
+  }
+
+  test("propia ejecutar: dos vueltas del cuadrado a medias terminan en (1, 1) mirando al sur") {
+    assert(ejecutar(inicial, Repetir(2, Secuencia(List(Avanzar(1), Girar(Derecha))))) ==
+      Estado(1, 1, Sur))
+  }
+
+  test("propia ejecutar: dos cuadrados seguidos vuelven al punto de partida") {
+    assert(ejecutar(inicial, Repetir(2, cuadrado)) == inicial)
+  }
+
   // Punto 3 -------------------------------------------------------------------
 
   test("cuantasBasicas: una orden básica cuenta uno") {
