@@ -1,279 +1,189 @@
-# Ejemplo de informe de corrección
+# Informe de corrección: un robot en la cuadrícula
 
-Fundamentos de Programación Funcional y Concurrente.
-Documento realizado por el docente Juan Francisco Díaz.
+Fundamentos de Programación Funcional y Concurrente, Taller 2.
 
-## 1. Argumentar la corrección de programas recursivos
+## 0. Método
 
-Sea $f : A \to B$ una función, y $A$ un conjunto definido recursivamente
-(recordar la definición de Matemáticas Discretas I), como por ejemplo los
-naturales o las listas.
+El tipo `Orden` está definido recursivamente por cuatro alternativas:
 
-Sea $P_f$ un programa recursivo (lineal o en árbol) desarrollado en Scala (o en
-cualquier lenguaje de programación) hecho para calcular $f$:
+- **Casos base:** `Avanzar(n)` y `Girar(s)`.
+- **Casos recursivos:** `Repetir(k, o')` y `Secuencia(List(o_1, ..., o_m))`.
 
-```scala
-def Pf(a: A): B = { // Pf recibe a de tipo A, y devuelve f(a) de tipo B
-  ...
-}
-```
+Para demostrar que una función $P_f$ cumple su especificación $f$ sobre todas las órdenes se usa inducción estructural: se prueba la propiedad en los dos casos base y, en los dos casos recursivos, se supone la propiedad (hipótesis de inducción, HI) para las órdenes contenidas.
 
-¿Cómo argumentar que $P_f(a)$ siempre devuelve $f(a)$ como respuesta? Es decir,
-¿cómo argumentar que $P_f$ es correcto con respecto a su especificación?
+Notación: $[\![ o ]\!](e)$ es el estado que la especificación del enunciado asigna a ejecutar $o$ desde $e$, y `ejecutar(e, o)` es el programa. El estado es $e = (x, y, d)$.
 
-La respuesta es sencilla: demostrando el siguiente teorema.
+## 1. `girar`
 
-```math
-\forall a \in A : P_f(a) == f(a)
-```
+**Especificación.** $\text{girar}(d, \text{Derecha})$ es la dirección siguiente en el orden $\text{Norte} \to \text{Este} \to \text{Sur} \to \text{Oeste} \to \text{Norte}$, y $\text{girar}(d, \text{Izquierda})$ la anterior.
 
-Cuando uno tiene que demostrar que algo se cumple para todos los elementos de
-un conjunto definido recursivamente, es natural usar inducción estructural. En
-términos prácticos, esto significa demostrar que:
+**Argumento.** El dominio $\text{Direccion} \times \text{Sentido}$ tiene $4 \times 2 = 8$ elementos y el `match` tiene un caso por cada uno. Como `Direccion` y `Sentido` son `sealed`, el compilador comprueba que no falta ninguno. Cada caso se verifica contra la especificación:
 
-- Para cada valor básico $a$ de $A$, se tiene que $P_f(a) == f(a)$.
-- Para cada valor $a \in A$ construido recursivamente a partir de otro(s)
-  valor(es) $a' \in A$, se tiene que
-  $P_f(a') == f(a') \rightarrow P_f(a) == f(a)$. (Esta es la hipótesis de
-  inducción).
+| Pareja | Programa | Especificación |
+|---|---|---|
+| (Norte, Derecha) | Este | siguiente de Norte |
+| (Este, Derecha) | Sur | siguiente de Este |
+| (Sur, Derecha) | Oeste | siguiente de Sur |
+| (Oeste, Derecha) | Norte | siguiente de Oeste |
+| (Norte, Izquierda) | Oeste | anterior de Norte |
+| (Oeste, Izquierda) | Sur | anterior de Oeste |
+| (Sur, Izquierda) | Este | anterior de Sur |
+| (Este, Izquierda) | Norte | anterior de Este |
 
-### Ejemplo: factorial recursivo
+**Propiedad útil.** Para toda dirección $d$, $\text{girar}(\text{girar}(d, \text{Derecha}), \text{Izquierda}) = d$, porque cada fila de Izquierda es la inversa de una fila de Derecha. Se usa en la sección 5.
 
-Sea $f : \mathbb{N} \to \mathbb{N}$ la función que calcula el factorial de un
-número natural, es decir, $f(n) = n!$. Y sea $P_f$ el siguiente programa en
-Scala:
+## 2. `ejecutar`
 
-```scala
-def Pf(n: Int): Int = { // Pf recibe n de tipo Int, y devuelve n! de tipo Int
-  if (n == 0) 1 else n * Pf(n - 1)
-}
-```
+**Especificación.**
 
-Vamos a demostrar que $\forall n \in \mathbb{N} : P_f(n) == n!$
+- $[\![ \text{Avanzar}(n) ]\!](x, y, d)$ suma $n$ a $y$ si $d = \text{Norte}$, a $x$ si $d = \text{Este}$, y resta $n$ si $d = \text{Sur}$ o $d = \text{Oeste}$ en la coordenada correspondiente.
+- $[\![ \text{Girar}(s) ]\!](x, y, d) = (x, y, \text{girar}(d, s))$.
+- $[\![ \text{Repetir}(k, o) ]\!](e)$ es aplicar $[\![ o ]\!]$ exactamente $k$ veces, y es $e$ si $k \leq 0$.
+- $[\![ \text{Secuencia}(o_1, \ldots, o_m) ]\!](e) = [\![ o_m ]\!](\cdots [\![ o_1 ]\!](e))$, y es $e$ si $m = 0$.
 
-**Caso base:** $n = 0$
+**Teorema.** $\forall o \in \text{Orden},\ \forall e \in \text{Estado} : \text{ejecutar}(e, o) = [\![ o ]\!](e)$.
 
-```math
-P_f(0) \rightarrow \text{if } (0 == 0)\ 1 \text{ else } 0 \ast P_f(-1) \rightarrow 1
-```
+Se prueba por inducción estructural sobre $o$.
 
-Por otro lado, $f(0) = 0! = 1$. Entonces $P_f(0) == f(0)$.
+**Caso base `Avanzar(n)`.** El programa hace `match` sobre `e.mira` y en cada dirección modifica la coordenada que dice la especificación y deja las demás intactas. Coincide con $[\![ \text{Avanzar}(n) ]\!](e)$, también para $n < 0$.
 
-**Caso de inducción:** $n = k + 1$, $k \geq 0$. Hay que demostrar:
-$P_f(k) == f(k) \rightarrow P_f(k + 1) == f(k + 1)$
+**Caso base `Girar(s)`.** El programa devuelve $(x, y, \text{girar}(d, s))$, igual a la especificación, usando la corrección de `girar` de la sección 1.
 
-```math
-P_f(k+1) \rightarrow \text{if } (k+1 == 0)\ 1 \text{ else } (k+1) \ast P_f(k) \rightarrow (k+1) \ast P_f(k)
-```
+**Caso `Repetir(k, o')`.** HI: $\text{ejecutar}(e', o') = [\![ o' ]\!](e')$ para todo $e'$. Se hace una segunda inducción sobre $k$.
 
-Usando la hipótesis de inducción (HI):
+- Si $k \leq 0$, el programa devuelve $e$, que es lo que dice la especificación.
+- Si $k \geq 1$: el programa calcula $\text{ejecutar}(\text{ejecutar}(e, o'), \text{Repetir}(k-1, o'))$. Por HI, $\text{ejecutar}(e, o') = [\![ o' ]\!](e) =: e_1$. Por la hipótesis de la inducción sobre $k$, $\text{ejecutar}(e_1, \text{Repetir}(k-1, o')) = [\![ o' ]\!]^{k-1}(e_1)$. Entonces el resultado es $[\![ o' ]\!]^{k-1}([\![ o' ]\!](e)) = [\![ o' ]\!]^{k}(e)$.
 
-```math
-\rightarrow (k+1) \ast k! = (k+1)!
-```
+**Caso `Secuencia(o_1, ..., o_m)`.** HI: la propiedad vale para cada $o_i$. Se prueba por inducción sobre $m$ que $\text{foldLeft}$ calcula $[\![ o_m ]\!](\cdots [\![ o_1 ]\!](e))$:
 
-Por lo tanto, $P_f(k + 1) == f(k + 1)$.
+- $m = 0$: `foldLeft` sobre la lista vacía devuelve $e$.
+- $m = j + 1$: `foldLeft` sobre $(o_1, \ldots, o_{j+1})$ es `ejecutar` de $o_{j+1}$ sobre el resultado de `foldLeft` de los primeros $j$. Por la inducción sobre $m$ ese resultado es $e_j = [\![ o_j ]\!](\cdots [\![ o_1 ]\!](e))$, y por HI sobre $o_{j+1}$ el resultado final es $[\![ o_{j+1} ]\!](e_j)$.
 
-Concluimos por inducción que $\forall n \in \mathbb{N} : P_f(n) == n!$
+Por lo tanto $\text{ejecutar}(e, o) = [\![ o ]\!](e)$ para toda orden. $\blacksquare$
 
-### Ejemplo: el máximo de una lista
+**Ejemplo de comprobación.** Con $o = \text{Repetir}(4, S)$ y $S = (\text{Avanzar}(1), \text{Girar}(\text{Derecha}))$, una vuelta de $S$ desde $(x, y, d)$ lleva a $(x', y', \text{girar}(d, \text{Derecha}))$. Cuatro vueltas desde el norte suman los cuatro desplazamientos $(0, 1), (1, 0), (0, -1), (-1, 0)$, que dan $(0, 0)$, y cuatro giros a la derecha devuelven la dirección a Norte.
 
-Sea $f : \text{List}[\mathbb{N}] \to \mathbb{N}$ la función que calcula el
-máximo de una lista de enteros positivos, no vacía. Y sea $P_f$ el siguiente
-programa en Scala:
+## 3. `cuantasBasicas` y `profundidad`
 
-```scala
-def maxLin(l: List[Int]): Int = {
-  if (l.tail.isEmpty) l.head
-  else math.max(maxLin(l.tail), l.head)
-}
-```
+**Especificación.**
 
-Demostraremos que:
+$$
+\text{cb}(o) = \begin{cases}
+1 & o = \text{Avanzar}(n) \text{ o } o = \text{Girar}(s) \\
+\max(k, 0) \cdot \text{cb}(o') & o = \text{Repetir}(k, o') \\
+\sum_{i=1}^{m} \text{cb}(o_i) & o = \text{Secuencia}(o_1, \ldots, o_m)
+\end{cases}
+$$
 
-```math
-\forall n \in \mathbb{N} \setminus \{0\} : P_f(\text{List}(a_1, a_2, \ldots, a_n)) == f(\text{List}(a_1, a_2, \ldots, a_n))
-```
+$$
+\text{prof}(o) = \begin{cases}
+1 & o \text{ es básica} \\
+1 + \text{prof}(o') & o = \text{Repetir}(k, o') \\
+1 + \max(\{0\} \cup \{\text{prof}(o_i)\}) & o = \text{Secuencia}(o_1, \ldots, o_m)
+\end{cases}
+$$
 
-**Caso base:** $n = 1$
+**Teorema.** `cuantasBasicas` y `profundidad` calculan $\text{cb}$ y $\text{prof}$ para toda orden.
 
-```math
-P_f(\text{List}(a_1)) \rightarrow \text{if } \text{List}(a_1).\text{tail.isEmpty then } \text{List}(a_1).\text{head else } \ldots \rightarrow \text{List}(a_1).\text{head} \rightarrow a_1
-```
+**Casos base.** `Avanzar(_)` y `Girar(_)` devuelven $1$ en ambas funciones, igual que la especificación.
 
-Por otro lado, $f(\text{List}(a_1)) = a_1$. Entonces
-$P_f(\text{List}(a_1)) == f(\text{List}(a_1))$.
+**Caso `Repetir(k, o')`.** Por HI, `cuantasBasicas(o')` $= \text{cb}(o')$ y `profundidad(o')` $= \text{prof}(o')$. El programa devuelve $\max(k, 0) \cdot \text{cb}(o')$ y $1 + \text{prof}(o')$, que son las especificaciones.
 
-**Caso de inducción:** $n = k + 1$, $k \geq 1$. Se debe demostrar:
+**Caso `Secuencia(o_1, ..., o_m)`.** Por HI cada llamada sobre $o_i$ devuelve el valor de la especificación. `map` las aplica a toda la lista, `sum` suma (da $0$ si $m = 0$) y `foldLeft(0)` con `math.max` calcula el máximo con valor inicial $0$. El resultado coincide con $\sum \text{cb}(o_i)$ y con $1 + \max(\{0\} \cup \{\text{prof}(o_i)\})$. $\blacksquare$
 
-```math
-P_f(\text{List}(b_1, b_2, \ldots, b_k)) == f(\text{List}(b_1, b_2, \ldots, b_k)) \rightarrow P_f(\text{List}(a_1, a_2, \ldots, a_{k+1})) == f(\text{List}(a_1, a_2, \ldots, a_{k+1}))
-```
+**Consistencia con `ejecutar`.** Para $o = \text{Repetir}(4, S)$ el programa da $\text{cb} = 4 \cdot 2 = 8$ y $\text{prof} = 1 + 2 = 3$, como pide el enunciado.
 
-Empecemos por calcular qué devuelve $P_f$ usando el modelo de sustitución:
+## 4. `componer`, `rutina`, `aplicarA`, `transformar`
 
-```math
-P_f(L) \rightarrow \text{if } L.\text{tail.isEmpty then } L.\text{head else math.max}(P_f(L.\text{tail}), L.\text{head})
-```
+### 4.1 `componer`: la rutina compuesta equivale a ejecutar sus partes
 
-```math
-\rightarrow \text{math.max}(P_f(\text{List}(a_2, \ldots, a_{k+1})), a_1)
-```
+**Teorema.** Para todo estado $e$ y órdenes $o_1, o_2$:
+$$\text{ejecutar}(e, \text{componer}(o_1, o_2)) = \text{ejecutar}(\text{ejecutar}(e, o_1), o_2)$$
 
-Sea $b = P_f(\text{List}(a_2, \ldots, a_{k+1}))$; por la hipótesis de
-inducción, $b = f(\text{List}(a_2, \ldots, a_{k+1}))$. Hay dos posibilidades:
+**Demostración.** Por definición, $\text{componer}(o_1, o_2) = \text{Secuencia}(\text{List}(o_1, o_2))$. Por el caso `Secuencia` de la sección 2, `ejecutar` sobre esa secuencia es `foldLeft` de la lista de dos órdenes empezando en $e$:
 
-- Si $\text{math.max}(b, a_1) = b$, entonces $b \geq a_1$ y
- $b == f(\text{List}(a_1, a_2, \ldots, a_{k+1}))$.
-- Si $\text{math.max}(b, a_1) = a_1$, entonces $a_1 \geq b$ y
- $a_1 == f(\text{List}(a_1, a_2, \ldots, a_{k+1}))$.
+$$\text{foldLeft}(e)(o_1, o_2) = \text{ejecutar}(\text{ejecutar}(e, o_1), o_2)$$
 
-Por lo tanto, $P_f(L) == f(L)$.
+que es exactamente el lado derecho. $\blacksquare$
 
-Concluimos por inducción que:
+**Generalización.** Por inducción sobre el número de composiciones, componer tres órdenes de cualquiera de las dos formas, $\text{componer}(\text{componer}(o_1, o_2), o_3)$ o $\text{componer}(o_1, \text{componer}(o_2, o_3))$, ejecuta $o_1$, luego $o_2$ y luego $o_3$. Es decir, la composición es asociativa en su efecto aunque los términos `Orden` sean distintos.
 
-```math
-\forall n \in \mathbb{N} \setminus \{0\} : P_f(\text{List}(a_1, a_2, \ldots, a_n)) == f(\text{List}(a_1, a_2, \ldots, a_n))
-```
+### 4.2 `rutina`
 
-## 2. Argumentar la corrección de programas iterativos
+**Teorema.** $\text{rutina}(p)(g)(v) = \text{Repetir}(v, \text{Secuencia}(\text{List}(\text{Avanzar}(p), \text{Girar}(g))))$.
 
-Para argumentar la corrección de programas iterativos, se debe formalizar cómo
-es la iteración. Esto implica definir:
+Es verdadero por la definición del programa: el currificado solo fija $p$ y $g$ y deja $v$ para después. Aplicar `rutina(p)(g)` a $v$ equivale a aplicar `rutina(p)(g)(v)`, porque Scala define `def f(a)(b)(c)` como una función que devuelve funciones de una variable. Con $p = 1$, $g = \text{Derecha}$ y $v = 4$ se obtiene el cuadrado del enunciado, y por la sección 2 deja al robot en el estado de partida.
 
-- Cómo se representa un estado de la iteración, $s$.
-- Cuál es el estado inicial, $s_0$.
-- Cuál es el estado final (o cómo se reconoce que un estado es final): $s_f$.
-- Qué condición (o predicado) cumple todo estado: $\text{Inv}(s)$ (invariante
-  de la iteración).
-- El mecanismo para pasar de un estado al siguiente: $\text{transformar}(s)$.
-  Si $s_i$ es el estado $i$, entonces $\text{transformar}(s_i) = s_{i+1}$.
-
-Un programa iterativo tiene la siguiente forma:
+### 4.3 `aplicarA`
 
-```scala
-def Pf(a: A): B = { // Pf recibe a de tipo A, y devuelve f(a) de tipo B
-  def Pf_iter(s: Estado): B =
-    if (esFinal(s)) respuesta(s) else Pf_iter(transformar(s))
-  Pf_iter(s0)
-}
-```
+**Teorema.** Para toda lista de estados $L = (e_1, \ldots, e_m)$ y toda orden $o$:
+$\text{aplicarA}(L, o) = (\text{ejecutar}(e_1, o), \ldots, \text{ejecutar}(e_m, o))$.
 
-Demostración de corrección:
+Se prueba por inducción sobre la lista. Para $L = \text{Nil}$, `map` devuelve `Nil`. Para $L = e_1 :: L'$, `map` produce $\text{ejecutar}(e_1, o) :: \text{map}(L')$, y por HI el resto cumple la propiedad. $\blacksquare$
 
-- $\text{Inv}(s_0)$: el estado inicial cumple la condición invariante.
-- Si $(s_i \neq s_f \land \text{Inv}(s_i)) \rightarrow \text{Inv}(\text{transformar}(s_i))$:
-  el nuevo estado cumple la condición invariante si el estado anterior la
-  cumplía.
-- De lo anterior se concluye $\text{Inv}(s_f)$, es decir, el estado final
-  cumple la condición invariante. Luego,
-  $\text{Inv}(s_f) \rightarrow \text{respuesta}(s_f) == f(a)$.
-- Finalmente, demostrar que siempre se llega al estado final $s_f$. Esto
-  implica que
-  $P_f(a) == \text{iter}(s_0) == \text{respuesta}(s_f) == f(a)$.
+### 4.4 `transformar`
 
-### Ejemplo: factorial iterativo
+**Especificación.** $\text{transformar}(o, f)$ reemplaza cada orden básica $b$ de $o$ por $f(b)$ y reconstruye las compuestas con el mismo número de veces en `Repetir` y el mismo orden en `Secuencia`.
 
-Considere el siguiente programa iterativo en Scala para calcular la función
-factorial:
+**Demostración por inducción estructural.**
 
-```scala
-def Pf(n: Int): Int = { // Pf recibe n de tipo Int, y devuelve n! de tipo Int
-  def Pf_iter(i: Int, n: Int, ac: Int): Int =
-    if (i > n) ac else Pf_iter(i + 1, n, i * ac)
-  Pf_iter(1, n, 1)
-}
-```
+- Casos base: para `Avanzar` y `Girar` el programa devuelve $f(o)$, que es el reemplazo de la especificación.
+- `Repetir(k, o')`: por HI, `transformar(o', f)` hace el reemplazo en $o'$. El programa devuelve `Repetir(k, transformar(o', f))`, que conserva $k$.
+- `Secuencia(o_1, ..., o_m)`: por HI se cumple en cada $o_i$, y `map` conserva el orden y la longitud de la lista. $\blacksquare$
 
-Este programa implementa el siguiente proceso iterativo:
+**Caso particular.** Con $f = \text{identidad}$, $\text{transformar}(o, f) = o$, que también se demuestra por inducción sustituyendo $f(b) = b$ en cada caso.
 
-- Un estado $s = (i, n, ac)$.
-- El estado inicial es $s_0 = (1, n, 1)$.
-- $(i, n, ac)$ es final si $i > n$, o lo que es lo mismo, si $i = n + 1$.
-- La invariante de ciclo es
-  $\text{Inv}(i, n, ac) \equiv i \leq n + 1 \land ac = (i-1)!$.
-  La invariante de ciclo es una relación que SIEMPRE se cumple en el ciclo.
-- $\text{transformar}((i, n, ac)) = (i+1, n, i \ast ac)$.
+## 5. `simplificar` no cambia el resultado
 
-Ahora, demostramos los puntos mencionados:
+**Teorema.** Para toda orden $o$ y todo estado $e$:
+$$\text{ejecutar}(e, o) = \text{ejecutar}(e, \text{simplificar}(o))$$
 
-**1.** $\text{Inv}(s_0)$: el estado inicial cumple la condición invariante.
+Como `simplificar` es una repetición de `pasada`, basta probar que una `pasada` conserva el resultado, y después concluir por inducción sobre el número de pasadas.
 
-```math
-s_0 = (1, n, 1) \implies 1 \leq n + 1 \land 1 = 0!
-```
+### 5.1 Equivalencia regla por regla
 
-**2.** La invariante se mantiene con la transformación de estados,
-$(s_i \neq s_f \land \text{Inv}(s_i)) \rightarrow \text{Inv}(\text{transformar}(s_i))$:
+Se escribe $o \equiv o'$ cuando $\forall e : \text{ejecutar}(e, o) = \text{ejecutar}(e, o')$. Se usa que $\equiv$ es una congruencia respecto a `Repetir` y `Secuencia`: si se cambian las órdenes contenidas por otras $\equiv$, la orden que las contiene sigue siendo $\equiv$. Esto se sigue directamente del teorema de la sección 2, porque `ejecutar` de una compuesta solo depende del efecto de sus partes.
 
-1. Primer cambio, $i = i + 1$, lo que implica $ac = ((i+1) - 1)! = i!$.
-2. Segundo cambio, $ac = i \ast ac$, entonces $ac = (i - 1)! \ast i = i!$.
-3. Como se puede ver en ambos cambios indicados en la transformación, la
-   invariante se mantiene.
+**Regla 1a: $\text{Avanzar}(0) \equiv \text{Secuencia}(\text{Nil})$.** Avanzar $0$ casillas suma $0$ a la coordenada correspondiente en cualquier dirección y deja la dirección igual: $\text{ejecutar}(e, \text{Avanzar}(0)) = e$. La secuencia vacía devuelve $e$.
 
-**3.** $\text{Inv}(s_f) \rightarrow \text{respuesta}(s_f) == f(a)$
+**Regla 1b: $\text{Repetir}(k, o') \equiv \text{Secuencia}(\text{Nil})$ si $k \leq 0$.** Por la sección 2, `ejecutar` de un `Repetir` con $k \leq 0$ devuelve $e$ sin importar $o'$.
 
-```math
-(n + 1 \leq n + 1) \land ac = ((n+1)-1)! \rightarrow ac == n!
-```
+**Regla 2: $\text{Secuencia}(\ldots, \text{Avanzar}(a), \text{Avanzar}(b), \ldots) \equiv \text{Secuencia}(\ldots, \text{Avanzar}(a + b), \ldots)$.** Los dos avances consecutivos se ejecutan con la misma dirección, porque `Avanzar` no la cambia. Sea $d$ esa dirección. En la coordenada que corresponde a $d$, el efecto de los dos avances es sumar $a$ y luego $b$ (o restar, según la dirección), que es sumar $a + b$ (o restar $a + b$). La otra coordenada y la dirección no cambian. Por lo tanto, $\text{ejecutar}(\text{ejecutar}(e, \text{Avanzar}(a)), \text{Avanzar}(b)) = \text{ejecutar}(e, \text{Avanzar}(a + b))$. Como esto es un cambio de dos elementos contiguos de la lista, el `foldLeft` da el mismo estado antes y después del par, y el resto de la secuencia recibe el mismo estado. Además, `juntar` recorre la lista de derecha a izquierda, por lo que una racha de avances $a_1, \ldots, a_j$ se vuelve $\text{Avanzar}(a_1 + \cdots + a_j)$ aplicando esta equivalencia $j - 1$ veces.
 
-**4.** En cada paso, la componente $i$ del estado incrementa, acercándose a $n+1$.
-Después de $n$ iteraciones, se alcanza $n+1$.
+**Regla 3: $\text{Repetir}(1, o') \equiv o'$.** Por la sección 2, `ejecutar(e, Repetir(1, o'))` es `ejecutar(ejecutar(e, o'), Repetir(0, o'))`, y como $0 \leq 0$ el segundo paso devuelve su argumento. El resultado es `ejecutar(e, o')`.
 
-Esto implica que $P_f(n) == \text{iter}(1, n, 1) == n!$
+**Regla 4: $\text{Secuencia}(\text{List}(o')) \equiv o'$.** `foldLeft` con un solo elemento es `ejecutar(e, o')`.
 
-### Ejemplo: el máximo de una lista
+**Regla 5: quitar de una secuencia una orden $z \equiv \text{Secuencia}(\text{Nil})$.** Si $z$ no hace nada, entonces $\text{ejecutar}(e', z) = e'$ para todo $e'$, y en el `foldLeft` el estado pasa por $z$ sin cambiar. Quitar $z$ de la lista no altera el estado que reciben las órdenes siguientes. En el programa, `nada(x)` solo reconoce `Secuencia(Nil)`, que cumple $z \equiv \text{Secuencia}(\text{Nil})$ por definición.
 
-Se desea calcular el máximo de una lista de enteros positivos, no vacía. Sea
-$f : \text{List}[\mathbb{N}] \to \mathbb{N}$ la función que calcula ese valor.
-Y sea $P_f$ el siguiente programa en Scala:
+### 5.2 Una pasada conserva el resultado
 
-```scala
-def maxIt(l: List[Int]): Int = {
-  def maxAux(max: Int, l: List[Int]): Int = {
-    if (l.isEmpty) max
-    else maxAux(math.max(max, l.head), l.tail)
-  }
-  maxAux(l.head, l.tail)
-}
-```
+**Lema.** Para toda orden $o$: $\text{pasada}(o) \equiv o$.
 
-Este programa implementa el siguiente proceso iterativo:
+Por inducción estructural sobre $o$:
 
-- Un estado $s = (max, l)$ donde $l = \text{List}(a_i, a_{i+1}, \ldots, a_k)$
-  es una cola de $L$.
-- El estado inicial es
-  $s_0 = (L.\text{head}, L.\text{tail}) = (a_1, \text{List}(a_2, \ldots, a_k))$.
-- $s = (max, l)$ es final si $l$ es vacía.
-- $\text{Inv}(max, l) \equiv l = \text{List}(a_i, a_{i+1}, \ldots, a_k) \land max = f(\text{List}(a_1, a_2, \ldots, a_{i-1}))$.
-- $\text{transformar}((max, l)) = (nmax, l.\text{tail})$ donde $nmax = max$ si
-  $max \geq l.\text{head}$, y $nmax = l.\text{head}$ si no.
+- `Avanzar(0)`: `pasada` devuelve `Secuencia(Nil)`; vale por la regla 1a.
+- `Avanzar(n)` con $n \neq 0$ y `Girar(s)`: `pasada` devuelve la misma orden.
+- `Repetir(k, o')`: por HI, $\text{pasada}(o') \equiv o'$. Hay tres posibilidades:
+  - $k \leq 0$: se devuelve `Secuencia(Nil)`; vale por la regla 1b.
+  - $k = 1$: se devuelve $\text{pasada}(o') \equiv o'$, y $\text{Repetir}(1, o') \equiv o'$ por la regla 3.
+  - $k \geq 2$: se devuelve `Repetir(k, pasada(o'))`, que es $\equiv$ a `Repetir(k, o')` por congruencia.
+- `Secuencia(o_1, ..., o_m)`: por HI, $\text{pasada}(o_i) \equiv o_i$ para cada $i$, así que `Secuencia(pasada(o_1), ..., pasada(o_m))` es $\equiv$ a la original. Luego se quitan las que valen `Secuencia(Nil)` (regla 5), se juntan los avances contiguos (regla 2) y, según quede la lista, se devuelve `Secuencia(Nil)` si es vacía (que es el efecto de la lista vacía), el único elemento si hay uno (regla 4) o la secuencia con varios. En cada paso se cambió por algo $\equiv$. $\blacksquare$
 
-Demostración de los puntos:
+### 5.3 Conclusión
 
-**1.** $\text{Inv}(s_0)$: el estado inicial cumple la condición invariante.
+`simplificar(o)` es `o` o es `simplificar(pasada(o))`. Por inducción sobre el número de llamadas, $\text{simplificar}(o) \equiv \text{pasada}(o) \equiv o$ usando el lema y la transitividad de $\equiv$. Por lo tanto $\text{ejecutar}(e, o) = \text{ejecutar}(e, \text{simplificar}(o))$ para todo $e$. $\blacksquare$
 
-```math
-s_0 = (a_1, \text{List}(a_2, \ldots, a_k)) \implies a_1 = f(\text{List}(a_1))
-```
+### 5.4 Terminación
 
-**2.** $(s_i \neq s_f \land \text{Inv}(s_i)) \rightarrow \text{Inv}(\text{transformar}(s_i))$
+Se define la medida $m(o) = \text{nodos}(o) + \text{avanzares}(o)$, donde $\text{nodos}$ cuenta todos los constructores de la orden y $\text{avanzares}$ cuenta los `Avanzar`.
 
-```math
-\neg\, l.\text{isEmpty} \land l = \text{List}(a_i, a_{i+1}, \ldots, a_k) \land max = f(\text{List}(a_1, a_2, \ldots, a_{i-1}))
-```
+- Ninguna regla aumenta $m$.
+- La regla 1a no cambia $\text{nodos}$ pero quita un `Avanzar`, así que $m$ baja en $1$.
+- Las reglas 1b, 2, 3, 4 y 5 eliminan al menos un nodo, y $\text{avanzares}$ no sube.
 
-```math
-\rightarrow l.\text{tail} = \text{List}(a_{i+1}, \ldots, a_k) \land nmax = f(\text{List}(a_1, \ldots, a_i))
-```
+Por lo tanto $m(\text{pasada}(o)) \leq m(o)$, con desigualdad estricta cuando $\text{pasada}(o) \neq o$. Como $m$ toma valores naturales, la cadena de pasadas no puede bajar para siempre y tiene que llegar a una orden que `pasada` ya no cambia, momento en el que `simplificar` se detiene.
 
-**3.** $\text{Inv}(s_f) \rightarrow \text{respuesta}(s_f) == f(a)$
+### 5.5 Ejemplo
 
-```math
-\text{Inv}((max, \text{List}())) \rightarrow max = f(\text{List}(a_1, \ldots, a_k))
-```
-
-**4.** En cada paso, la lista $l$ se reduce, acercándose a ser vacía. Después de
-$k$ iteraciones, $l = \text{List}()$.
-
-Esto implica que $P_f(L) == \text{maxAux}(L.\text{head}, L.\text{tail}) == f(L)$
+Para $o = \text{Secuencia}(\text{Avanzar}(1), \text{Repetir}(1, \text{Secuencia}(\text{Avanzar}(0), \text{Avanzar}(2))), \text{Avanzar}(-3))$ el informe de proceso muestra que `simplificar` llega a `Secuencia(Nil)`. Efectivamente, el robot avanza $1 + 2 - 3 = 0$ casillas en la dirección en que mira, que es el efecto de `Secuencia(Nil)`.
