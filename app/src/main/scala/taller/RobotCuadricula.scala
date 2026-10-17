@@ -17,12 +17,36 @@ class RobotCuadricula {
   // Punto 1 -------------------------------------------------------------------
 
   /** La dirección que queda tras girar noventa grados hacia el sentido dado. */
-  def girar(d: Direccion, s: Sentido): Direccion = ???
+  def girar(d: Direccion, s: Sentido): Direccion = (d, s) match {
+    case (Norte, Derecha)   => Este
+    case (Este, Derecha)    => Sur
+    case (Sur, Derecha)     => Oeste
+    case (Oeste, Derecha)   => Norte
+    case (Norte, Izquierda) => Oeste
+    case (Oeste, Izquierda) => Sur
+    case (Sur, Izquierda)   => Este
+    case (Este, Izquierda)  => Norte
+  }
+ 
 
   // Punto 2 -------------------------------------------------------------------
 
   /** El estado que resulta de aplicarle la orden al estado dado. */
-  def ejecutar(e: Estado, o: Orden): Estado = ???
+    def ejecutar(e: Estado, o: Orden): Estado = o match {
+    case Avanzar(n) =>
+      e.mira match {
+        case Norte => Estado(e.x, e.y + n, e.mira)
+        case Este  => Estado(e.x + n, e.y, e.mira)
+        case Sur   => Estado(e.x, e.y - n, e.mira)
+        case Oeste => Estado(e.x - n, e.y, e.mira)
+      }
+    case Girar(sentido) => Estado(e.x, e.y, girar(e.mira, sentido))
+    case Repetir(veces, orden) =>
+      if (veces <= 0) e
+      else ejecutar(ejecutar(e, orden), Repetir(veces - 1, orden))
+    case Secuencia(ordenes) =>
+      ordenes.foldLeft(e)((estado, orden) => ejecutar(estado, orden))
+  }
 
   // Punto 3 -------------------------------------------------------------------
 
