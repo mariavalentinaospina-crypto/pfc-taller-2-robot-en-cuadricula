@@ -110,7 +110,6 @@ class RobotCuadriculaTest extends AnyFunSuite {
   test("propia ejecutar: dos cuadrados seguidos vuelven al punto de partida") {
     assert(ejecutar(inicial, Repetir(2, cuadrado)) == inicial)
   }
-
   // Punto 3 -------------------------------------------------------------------
 
   test("cuantasBasicas: una orden básica cuenta uno") {
