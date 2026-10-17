@@ -28,6 +28,21 @@ class RobotCuadriculaTest extends AnyFunSuite {
   test("girar: un giro y su contrario se cancelan") {
     assert(girar(girar(Este, Derecha), Izquierda) == Este)
   }
+  // Punto 1 (propias) ---------------------------------------------------------
+
+  test("propia girar: Este a la derecha da Sur") { assert(girar(Este, Derecha) == Sur) }
+  test("propia girar: Sur a la derecha da Oeste") { assert(girar(Sur, Derecha) == Oeste) }
+  test("propia girar: Este a la izquierda da Norte") { assert(girar(Este, Izquierda) == Norte) }
+  test("propia girar: Oeste a la izquierda da Sur") { assert(girar(Oeste, Izquierda) == Sur) }
+
+  test("propia girar: dos giros a la derecha y dos a la izquierda coinciden en toda dirección") {
+    assert(todas.forall(d =>
+      girar(girar(d, Derecha), Derecha) == girar(girar(d, Izquierda), Izquierda)))
+  }
+
+  test("propia girar: girar siempre cambia la dirección") {
+    assert(todas.forall(d => girar(d, Derecha) != d && girar(d, Izquierda) != d))
+  }
 
   // Punto 2 -------------------------------------------------------------------
 
