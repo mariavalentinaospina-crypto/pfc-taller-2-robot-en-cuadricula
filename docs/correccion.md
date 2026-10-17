@@ -2,7 +2,7 @@
 
 Fundamentos de Programación Funcional y Concurrente, Taller 2.
 
-## 0. Método
+## 1. Método
 
 El tipo `Orden` está definido recursivamente por cuatro alternativas:
 
@@ -13,7 +13,7 @@ Para demostrar que una función $P_f$ cumple su especificación $f$ sobre todas 
 
 Notación: $[\![ o ]\!](e)$ es el estado que la especificación del enunciado asigna a ejecutar $o$ desde $e$, y `ejecutar(e, o)` es el programa. El estado es $e = (x, y, d)$.
 
-## 1. `girar`
+## 2. `girar`
 
 **Especificación.** $\text{girar}(d, \text{Derecha})$ es la dirección siguiente en el orden $\text{Norte} \to \text{Este} \to \text{Sur} \to \text{Oeste} \to \text{Norte}$, y $\text{girar}(d, \text{Izquierda})$ la anterior.
 
@@ -32,7 +32,7 @@ Notación: $[\![ o ]\!](e)$ es el estado que la especificación del enunciado as
 
 **Propiedad útil.** Para toda dirección $d$, $\text{girar}(\text{girar}(d, \text{Derecha}), \text{Izquierda}) = d$, porque cada fila de Izquierda es la inversa de una fila de Derecha. Se usa en la sección 5.
 
-## 2. `ejecutar`
+## 3. `ejecutar`
 
 **Especificación.**
 
@@ -63,7 +63,7 @@ Por lo tanto $\text{ejecutar}(e, o) = [\![ o ]\!](e)$ para toda orden. $\blacksq
 
 **Ejemplo de comprobación.** Con $o = \text{Repetir}(4, S)$ y $S = (\text{Avanzar}(1), \text{Girar}(\text{Derecha}))$, una vuelta de $S$ desde $(x, y, d)$ lleva a $(x', y', \text{girar}(d, \text{Derecha}))$. Cuatro vueltas desde el norte suman los cuatro desplazamientos $(0, 1), (1, 0), (0, -1), (-1, 0)$, que dan $(0, 0)$, y cuatro giros a la derecha devuelven la dirección a Norte.
 
-## 3. `cuantasBasicas` y `profundidad`
+## 4. `cuantasBasicas` y `profundidad`
 
 **Especificación.**
 
@@ -93,9 +93,9 @@ $$
 
 **Consistencia con `ejecutar`.** Para $o = \text{Repetir}(4, S)$ el programa da $\text{cb} = 4 \cdot 2 = 8$ y $\text{prof} = 1 + 2 = 3$, como pide el enunciado.
 
-## 4. `componer`, `rutina`, `aplicarA`, `transformar`
+## 5. `componer`, `rutina`, `aplicarA`, `transformar`
 
-### 4.1 `componer`: la rutina compuesta equivale a ejecutar sus partes
+### 5.1 `componer`: la rutina compuesta equivale a ejecutar sus partes
 
 **Teorema.** Para todo estado $e$ y órdenes $o_1, o_2$:
 $$\text{ejecutar}(e, \text{componer}(o_1, o_2)) = \text{ejecutar}(\text{ejecutar}(e, o_1), o_2)$$
@@ -108,20 +108,20 @@ que es exactamente el lado derecho. $\blacksquare$
 
 **Generalización.** Por inducción sobre el número de composiciones, componer tres órdenes de cualquiera de las dos formas, $\text{componer}(\text{componer}(o_1, o_2), o_3)$ o $\text{componer}(o_1, \text{componer}(o_2, o_3))$, ejecuta $o_1$, luego $o_2$ y luego $o_3$. Es decir, la composición es asociativa en su efecto aunque los términos `Orden` sean distintos.
 
-### 4.2 `rutina`
+### 5.2 `rutina`
 
 **Teorema.** $\text{rutina}(p)(g)(v) = \text{Repetir}(v, \text{Secuencia}(\text{List}(\text{Avanzar}(p), \text{Girar}(g))))$.
 
 Es verdadero por la definición del programa: el currificado solo fija $p$ y $g$ y deja $v$ para después. Aplicar `rutina(p)(g)` a $v$ equivale a aplicar `rutina(p)(g)(v)`, porque Scala define `def f(a)(b)(c)` como una función que devuelve funciones de una variable. Con $p = 1$, $g = \text{Derecha}$ y $v = 4$ se obtiene el cuadrado del enunciado, y por la sección 2 deja al robot en el estado de partida.
 
-### 4.3 `aplicarA`
+### 5.3 `aplicarA`
 
 **Teorema.** Para toda lista de estados $L = (e_1, \ldots, e_m)$ y toda orden $o$:
 $\text{aplicarA}(L, o) = (\text{ejecutar}(e_1, o), \ldots, \text{ejecutar}(e_m, o))$.
 
 Se prueba por inducción sobre la lista. Para $L = \text{Nil}$, `map` devuelve `Nil`. Para $L = e_1 :: L'$, `map` produce $\text{ejecutar}(e_1, o) :: \text{map}(L')$, y por HI el resto cumple la propiedad. $\blacksquare$
 
-### 4.4 `transformar`
+### 5.4 `transformar`
 
 **Especificación.** $\text{transformar}(o, f)$ reemplaza cada orden básica $b$ de $o$ por $f(b)$ y reconstruye las compuestas con el mismo número de veces en `Repetir` y el mismo orden en `Secuencia`.
 
@@ -133,14 +133,14 @@ Se prueba por inducción sobre la lista. Para $L = \text{Nil}$, `map` devuelve `
 
 **Caso particular.** Con $f = \text{identidad}$, $\text{transformar}(o, f) = o$, que también se demuestra por inducción sustituyendo $f(b) = b$ en cada caso.
 
-## 5. `simplificar` no cambia el resultado
+## 6. `simplificar` no cambia el resultado
 
 **Teorema.** Para toda orden $o$ y todo estado $e$:
 $$\text{ejecutar}(e, o) = \text{ejecutar}(e, \text{simplificar}(o))$$
 
 Como `simplificar` es una repetición de `pasada`, basta probar que una `pasada` conserva el resultado, y después concluir por inducción sobre el número de pasadas.
 
-### 5.1 Equivalencia regla por regla
+### 6.1 Equivalencia regla por regla
 
 Se escribe $o \equiv o'$ cuando $\forall e : \text{ejecutar}(e, o) = \text{ejecutar}(e, o')$. Se usa que $\equiv$ es una congruencia respecto a `Repetir` y `Secuencia`: si se cambian las órdenes contenidas por otras $\equiv$, la orden que las contiene sigue siendo $\equiv$. Esto se sigue directamente del teorema de la sección 2, porque `ejecutar` de una compuesta solo depende del efecto de sus partes.
 
@@ -156,7 +156,7 @@ Se escribe $o \equiv o'$ cuando $\forall e : \text{ejecutar}(e, o) = \text{ejecu
 
 **Regla 5: quitar de una secuencia una orden $z \equiv \text{Secuencia}(\text{Nil})$.** Si $z$ no hace nada, entonces $\text{ejecutar}(e', z) = e'$ para todo $e'$, y en el `foldLeft` el estado pasa por $z$ sin cambiar. Quitar $z$ de la lista no altera el estado que reciben las órdenes siguientes. En el programa, `nada(x)` solo reconoce `Secuencia(Nil)`, que cumple $z \equiv \text{Secuencia}(\text{Nil})$ por definición.
 
-### 5.2 Una pasada conserva el resultado
+### 6.2 Una pasada conserva el resultado
 
 **Lema.** Para toda orden $o$: $\text{pasada}(o) \equiv o$.
 
@@ -170,11 +170,11 @@ Por inducción estructural sobre $o$:
   - $k \geq 2$: se devuelve `Repetir(k, pasada(o'))`, que es $\equiv$ a `Repetir(k, o')` por congruencia.
 - `Secuencia(o_1, ..., o_m)`: por HI, $\text{pasada}(o_i) \equiv o_i$ para cada $i$, así que `Secuencia(pasada(o_1), ..., pasada(o_m))` es $\equiv$ a la original. Luego se quitan las que valen `Secuencia(Nil)` (regla 5), se juntan los avances contiguos (regla 2) y, según quede la lista, se devuelve `Secuencia(Nil)` si es vacía (que es el efecto de la lista vacía), el único elemento si hay uno (regla 4) o la secuencia con varios. En cada paso se cambió por algo $\equiv$. $\blacksquare$
 
-### 5.3 Conclusión
+### 6.3 Conclusión
 
 `simplificar(o)` es `o` o es `simplificar(pasada(o))`. Por inducción sobre el número de llamadas, $\text{simplificar}(o) \equiv \text{pasada}(o) \equiv o$ usando el lema y la transitividad de $\equiv$. Por lo tanto $\text{ejecutar}(e, o) = \text{ejecutar}(e, \text{simplificar}(o))$ para todo $e$. $\blacksquare$
 
-### 5.4 Terminación
+### 6.4 Terminación
 
 Se define la medida $m(o) = \text{nodos}(o) + \text{avanzares}(o)$, donde $\text{nodos}$ cuenta todos los constructores de la orden y $\text{avanzares}$ cuenta los `Avanzar`.
 
@@ -184,6 +184,6 @@ Se define la medida $m(o) = \text{nodos}(o) + \text{avanzares}(o)$, donde $\text
 
 Por lo tanto $m(\text{pasada}(o)) \leq m(o)$, con desigualdad estricta cuando $\text{pasada}(o) \neq o$. Como $m$ toma valores naturales, la cadena de pasadas no puede bajar para siempre y tiene que llegar a una orden que `pasada` ya no cambia, momento en el que `simplificar` se detiene.
 
-### 5.5 Ejemplo
+### 6.5 Ejemplo
 
 Para $o = \text{Secuencia}(\text{Avanzar}(1), \text{Repetir}(1, \text{Secuencia}(\text{Avanzar}(0), \text{Avanzar}(2))), \text{Avanzar}(-3))$ el informe de proceso muestra que `simplificar` llega a `Secuencia(Nil)`. Efectivamente, el robot avanza $1 + 2 - 3 = 0$ casillas en la dirección en que mira, que es el efecto de `Secuencia(Nil)`.
