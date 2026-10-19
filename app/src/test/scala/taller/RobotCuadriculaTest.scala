@@ -148,6 +148,49 @@ class RobotCuadriculaTest extends AnyFunSuite {
     assert(profundidad(Secuencia(List(Avanzar(1), cuadrado))) == 4)
   }
 
+  test("propia cuantasBasicas: un giro cuenta uno"){
+    assert(cuantasBasicas(Girar(Izquierda)) == 1)
+  }
+
+  test("propia cuantasBasicas: tres repeticiones de tres basicas"){
+    assert(cuantasBasicas(Repetir(3,Secuencia(List(Avanzar(1),Avanzar(2),Girar(Derecha)))))==9)
+  }
+
+  test("propia cuantasBasicas: repetir dos veces el cuadrado ejecuta dieciséis"){
+    assert(cuantasBasicas(Repetir(2, cuadrado)) == 16)
+  }
+
+  test("propia cuantasBasicas: una básica seguida del cuadrado suma nueve"){
+    assert(cuantasBasicas(Secuencia(List(Avanzar(1), cuadrado))) == 9)
+  }
+
+  test("propia cuantasBasicas: repetir con veces negativas no ejecuta nada"){
+    assert(cuantasBasicas(Repetir(-3, Avanzar(1))) == 0)
+  }
+
+  test("propia profundidad: un giro tiene profundidad 1"){
+    assert(profundidad(Girar(Izquierda)) == 1)
+  }
+
+  test("propia profundidad: repetir una básica tiene profundidad 2"){
+    assert(profundidad(Repetir(2, Avanzar(1))) == 2)
+  }
+
+  test("propia profundidad: repetir el cuadrado tiene profundidad 4"){
+    assert(profundidad(Repetir(2, cuadrado)) == 4)
+  }
+
+  test("propia profundidad: secuencias anidadas vacías cuentan cada nivel"){
+    assert(profundidad(Secuencia(List(Secuencia(List(Secuencia(Nil)))))) == 3)
+  }
+
+  test("propia profundidad: gana la rama más honda de la secuencia"){
+    assert(profundidad(Secuencia(List(Avanzar(1), Secuencia(List(Girar(Derecha)))))) == 3)
+  }
+
+
+
+
   // Punto 4 -------------------------------------------------------------------
 
   test("componer: deja las dos órdenes en secuencia") {
@@ -188,6 +231,68 @@ class RobotCuadriculaTest extends AnyFunSuite {
 
   test("transformar: con la identidad no cambia nada") {
     assert(transformar(cuadrado, (o: Orden) => o) == cuadrado)
+  }
+
+  test("propia componer: la vacía con otra orden queda como secuencia de dos"){
+    assert(componer(Secuencia(Nil), Avanzar(1)) == Secuencia(List(Secuencia(Nil), Avanzar(1))))
+  }
+
+  test("propia componer: componer dos veces equivale a ejecutar las tres partes"){
+    val e = Estado(2, -1, Oeste)
+    val compuesta = componer(componer(Avanzar(3), Girar(Izquierda)), Avanzar(2))
+    assert(ejecutar(e, compuesta) ==
+      ejecutar(ejecutar(ejecutar(e, Avanzar(3)), Girar(Izquierda)), Avanzar(2)))
+  }
+
+  test("propia rutina: dos pasos, izquierda, tres veces"){
+    assert(rutina(2)(Izquierda)(3) == Repetir(3, Secuencia(List(Avanzar(2), Girar(Izquierda)))))
+  }
+
+  test("propia rutina: sin pasos solo gira, cinco giros dejan al robot mirando al este"){
+    val sinPasos = rutina(0)(Derecha) _
+    assert(ejecutar(inicial, sinPasos(5)) == Estado(0, 0, Este))
+  }
+
+  test("propia rutina: fijar pasos y giro permite reutilizar la función con distintas veces"){
+    val cuadradoDe = rutina(2)(Izquierda) _
+    assert(ejecutar(inicial, cuadradoDe(4)) == inicial)
+    assert(ejecutar(inicial, cuadradoDe(1)) == Estado(0, 2, Oeste))
+  }
+
+  test("propia aplicarA: girar sobre varios estados"){
+    assert(aplicarA(List(Estado(1, 1, Este), Estado(0, 0, Oeste)), Girar(Derecha)) ==
+      List(Estado(1,1, Sur), Estado(0, 0, Norte)))
+  }
+
+  test("propia aplicarA: conserva el orden y el tamaño de la lista"){
+    val estados = List(Estado(0, 0, Norte), Estado(1, 0, Norte), Estado(2, 0, Norte))
+    assert(aplicarA(estados, Avanzar(1)) == List(Estado(0, 1, Norte), Estado(1, 1, Norte), Estado(2, 1, Norte)))
+  }
+
+  test("propia transformar: cambiar los giros deja los avances"){
+    val f: Orden => Orden = {
+    case Girar(_) => Girar(Derecha)
+    case otra => otra
+    }
+    assert(transformar(Secuencia(List(Girar(Izquierda), Avanzar(1))), f) ==
+      Secuencia(List(Girar(Derecha), Avanzar(1))))
+  }
+
+  test("propia transformar: llega hasta las básicas más hondas"){
+    val f: Orden => Orden = {
+      case Avanzar(n) => Avanzar(n+1)
+      case otra => otra
+    }
+    assert(transformar(Repetir(2, Secuencia(List(Repetir(3, Avanzar(3))))), f) ==
+      Repetir(2, Secuencia(List(Repetir(3, Avanzar(4))))))
+  }
+
+  test("propia transformar: no toca el número de veces de repetir"){
+    val f: Orden => Orden = {
+      case Avanzar(n) => Avanzar(-n)
+      case otra => otra
+    }
+    assert(transformar(Repetir(7, Avanzar(2)), f) == Repetir(7, Avanzar(-2)))
   }
 
   // Punto 5 -------------------------------------------------------------------
