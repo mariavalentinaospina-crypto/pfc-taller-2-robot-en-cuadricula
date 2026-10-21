@@ -102,6 +102,8 @@ class RobotCuadriculaTest extends AnyFunSuite {
     assert(profundidad(Secuencia(List(Avanzar(1), cuadrado))) == 4)
   }
 
+  // Punto 3 (propias)-------------------------------------------------------------------
+
   test("propia cuantasBasicas: un giro cuenta uno"){
     assert(cuantasBasicas(Girar(Izquierda)) == 1)
   }
@@ -186,6 +188,8 @@ class RobotCuadriculaTest extends AnyFunSuite {
   test("transformar: con la identidad no cambia nada") {
     assert(transformar(cuadrado, (o: Orden) => o) == cuadrado)
   }
+
+  // Punto 4 (propias) -------------------------------------------------------------------
 
   test("propia componer: la vacía con otra orden queda como secuencia de dos"){
     assert(componer(Secuencia(Nil), Avanzar(1)) == Secuencia(List(Secuencia(Nil), Avanzar(1))))
