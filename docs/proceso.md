@@ -1,292 +1,189 @@
-# Informe de proceso: un robot en la cuadrícula
+# Informe de corrección: un robot en la cuadrícula
 
 Fundamentos de Programación Funcional y Concurrente — Taller 2.
 
-Convención: el eje $y$ crece hacia el norte y el eje $x$ hacia el este. El estado se representa como $(x, y, \text{mira})$, y el estado inicial es $(0, 0, \text{Norte})$.
+## 1. Método
 
-## Punto 1: girar
+El tipo `Orden` está definido recursivamente por cuatro alternativas:
 
-```scala
-def girar(d: Direccion, s: Sentido): Direccion = (d, s) match {
-  case (Norte, Derecha)   => Este
-  case (Este, Derecha)    => Sur
-  case (Sur, Derecha)     => Oeste
-  case (Oeste, Derecha)   => Norte
-  case (Norte, Izquierda) => Oeste
-  case (Oeste, Izquierda) => Sur
-  case (Sur, Izquierda)   => Este
-  case (Este, Izquierda)  => Norte
-}
-```
+- **Casos base:** `Avanzar(n)` y `Girar(s)`.
+- **Casos recursivos:** `Repetir(k, o')` y `Secuencia(List(o_1, ..., o_m))`.
 
-Se utiliza `match` sobre la pareja $(d, s)$ y se incluye un caso para cada una de las $4 \times 2 = 8$ combinaciones. Por tanto, no queda ninguna combinación sin cubrir y no hace falta un condicional adicional.
+Para demostrar que una función $P_f$ cumple su especificación $f$ para todas las órdenes, se utiliza la inducción estructural. Se prueba la propiedad en los dos casos base y, en los dos casos recursivos, se supone que la propiedad se cumple para las órdenes contenidas (hipótesis de inducción, HI).
 
-Traza de cuatro giros a la derecha desde el norte:
+Notación: $[\![ o ]\!](e)$ es el estado que la especificación del enunciado asigna a ejecutar $o$ desde $e$, y `ejecutar(e, o)` es el programa. El estado es $e = (x, y, d)$.
 
-| Paso | Pareja evaluada | Resultado |
+## 2. `girar`
+
+**Especificación.** $\text{girar}(d, \text{Derecha})$ es la dirección siguiente en el orden $\text{Norte} \to \text{Este} \to \text{Sur} \to \text{Oeste} \to \text{Norte}$, y $\text{girar}(d, \text{Izquierda})$ la anterior.
+
+**Argumento.** El dominio $\text{Direccion} \times \text{Sentido}$ tiene $4 \times 2 = 8$ elementos y el `match` tiene un caso por cada uno. Como `Direccion` y `Sentido` son `sealed`, el compilador comprueba que no falta ninguno. Cada caso se verifica contra la especificación:
+
+| Pareja | Programa | Especificación |
 |---|---|---|
-| 1 | (Norte, Derecha) | Este |
-| 2 | (Este, Derecha) | Sur |
-| 3 | (Sur, Derecha) | Oeste |
-| 4 | (Oeste, Derecha) | Norte |
+| (Norte, Derecha) | Este | siguiente de Norte |
+| (Este, Derecha) | Sur | siguiente de Este |
+| (Sur, Derecha) | Oeste | siguiente de Sur |
+| (Oeste, Derecha) | Norte | siguiente de Oeste |
+| (Norte, Izquierda) | Oeste | anterior de Norte |
+| (Oeste, Izquierda) | Sur | anterior de Oeste |
+| (Sur, Izquierda) | Este | anterior de Sur |
+| (Este, Izquierda) | Norte | anterior de Este |
 
-```mermaid
-flowchart LR
-    nN["Norte"] -->|Derecha| nE["Este"]
-    nE -->|Derecha| nS["Sur"]
-    nS -->|Derecha| nO["Oeste"]
-    nO -->|Derecha| nN
-```
+**Propiedad útil.** Para toda dirección $d$, $\text{girar}(\text{girar}(d, \text{Derecha}), \text{Izquierda}) = d$, porque cada fila de Izquierda es la inversa de una fila de Derecha. Esta propiedad se utiliza en la sección 5.
 
-## Punto 2: ejecutar
+## 3. `ejecutar`
 
-```scala
-def ejecutar(e: Estado, o: Orden): Estado = o match {
-  case Avanzar(n) =>
-    e.mira match {
-      case Norte => Estado(e.x, e.y + n, e.mira)
-      case Este  => Estado(e.x + n, e.y, e.mira)
-      case Sur   => Estado(e.x, e.y - n, e.mira)
-      case Oeste => Estado(e.x - n, e.y, e.mira)
-    }
-  case Girar(sentido) => Estado(e.x, e.y, girar(e.mira, sentido))
-  case Repetir(veces, orden) =>
-    if (veces <= 0) e
-    else ejecutar(ejecutar(e, orden), Repetir(veces - 1, orden))
-  case Secuencia(ordenes) =>
-    ordenes.foldLeft(e)((estado, orden) => ejecutar(estado, orden))
-}
-```
+**Especificación.**
 
-Hay un caso para cada alternativa de `Orden`:
+- $[\![ \text{Avanzar}(n) ]\!](x, y, d)$ suma $n$ a $y$ si $d = \text{Norte}$, a $x$ si $d = \text{Este}$, y resta $n$ si $d = \text{Sur}$ o $d = \text{Oeste}$ en la coordenada correspondiente.
+- $[\![ \text{Girar}(s) ]\!](x, y, d) = (x, y, \text{girar}(d, s))$.
+- $[\![ \text{Repetir}(k, o) ]\!](e)$ es aplicar $[\![ o ]\!]$ exactamente $k$ veces, y es $e$ si $k \leq 0$.
+- $[\![ \text{Secuencia}(o_1, \ldots, o_m) ]\!](e) = [\![ o_m ]\!](\cdots [\![ o_1 ]\!](e))$, y es $e$ si $m = 0$.
 
-- `Avanzar(n)` suma o resta $n$ a la coordenada correspondiente a la dirección. Si $n$ es negativo, el robot retrocede.
-- `Girar(sentido)` solo cambia la dirección y delega esa operación en `girar`.
-- `Repetir(veces, orden)` ejecuta la orden una vez y vuelve a llamarse con una repetición menos. Si `veces <= 0`, devuelve el estado sin modificarlo.
-- `Secuencia(ordenes)` pasa el estado de una orden a la siguiente mediante `foldLeft`. Si la lista está vacía, devuelve el estado recibido.
+**Teorema.** $\forall o \in \text{Orden},\ \forall e \in \text{Estado} : \text{ejecutar}(e, o) = [\![ o ]\!](e)$.
 
-### Traza del cuadrado
+La demostración se realiza por inducción estructural sobre $o$.
 
-Sea $S = \texttt{Secuencia(List(Avanzar(1), Girar(Derecha)))}$ y la orden
-Repetir(4, S) ejecutada desde $(0, 0, \text{Norte})$. En cada fila se ve el estado
-y lo que queda por ejecutar.
+**Caso base `Avanzar(n)`.** El programa hace `match` sobre `e.mira` y en cada dirección modifica la coordenada que dice la especificación y deja las demás intactas. Coincide con $[\![ \text{Avanzar}(n) ]\!](e)$, también para $n < 0$.
 
-| Paso | Estado | Orden que queda por ejecutar |
-|---|---|---|
-| 0 | $(0, 0, \text{Norte})$ | Repetir(4, S) |
-| 1 | $(0, 1, \text{Norte})$ | Girar(Derecha), luego Repetir(3, S) |
-| 2 | $(0, 1, \text{Este})$ | Repetir(3, S) |
-| 3 | $(1, 1, \text{Este})$ | Girar(Derecha), luego Repetir(2, S) |
-| 4 | $(1, 1, \text{Sur})$ | Repetir(2, S) |
-| 5 | $(1, 0, \text{Sur})$ | Girar(Derecha), luego Repetir(1, S) |
-| 6 | $(1, 0, \text{Oeste})$ | Repetir(1, S) |
-| 7 | $(0, 0, \text{Oeste})$ | Girar(Derecha), luego Repetir(0, S) |
-| 8 | $(0, 0, \text{Norte})$ | Repetir(0, S) |
-| fin | $(0, 0, \text{Norte})$ | nada: veces <= 0 devuelve el estado |
+**Caso base `Girar(s)`.** El programa devuelve $(x, y, \text{girar}(d, s))$, igual a la especificación, usando la corrección de `girar`, demostrada en la sección 2.
 
-El robot recorre un cuadrado de lado 1 y regresa al origen mirando hacia el norte.
+**Caso `Repetir(k, o')`.** HI: $\text{ejecutar}(e', o') = [\![ o' ]\!](e')$ para todo $e'$. Se hace una segunda inducción sobre $k$.
 
-```mermaid
-flowchart TD
-    A["Inicio<br/>(0, 0, Norte)"]
-    B["Avanzar 1<br/>(0, 1, Norte)"]
-    C["Girar derecha<br/>(0, 1, Este)"]
-    D["Avanzar 1<br/>(1, 1, Este)"]
-    E["Girar derecha<br/>(1, 1, Sur)"]
-    F["Avanzar 1<br/>(1, 0, Sur)"]
-    G["Girar derecha<br/>(1, 0, Oeste)"]
-    H["Avanzar 1<br/>(0, 0, Oeste)"]
-    I["Girar derecha<br/>(0, 0, Norte)"]
-    A --> B --> C --> D --> E --> F --> G --> H --> I
-```
+- Si $k \leq 0$, el programa devuelve $e$, que es lo que dice la especificación.
+- Si $k \geq 1$, el programa calcula $\text{ejecutar}(\text{ejecutar}(e, o'), \text{Repetir}(k-1, o'))$. Por HI, $\text{ejecutar}(e, o') = [\![ o' ]\!](e) =: e_1$. Por la hipótesis de la inducción sobre $k$, $\text{ejecutar}(e_1, \text{Repetir}(k-1, o')) = [\![ o' ]\!]^{k-1}(e_1)$. Entonces el resultado es $[\![ o' ]\!]^{k-1}([\![ o' ]\!](e)) = [\![ o' ]\!]^{k}(e)$.
 
-### Traza de una secuencia con un avance negativo
+**Caso `Secuencia(o_1, ..., o_m)`.** HI: la propiedad se cumple para cada $o_i$. Se prueba por inducción sobre $m$ que $\text{foldLeft}$ calcula $[\![ o_m ]\!](\cdots [\![ o_1 ]\!](e))$:
 
-Secuencia(List(Avanzar(3), Girar(Izquierda), Avanzar(2))) desde $(0, 0, \text{Norte})$:
+- $m = 0$: `foldLeft` sobre la lista vacía devuelve $e$.
+- $m = j + 1$: `foldLeft` sobre $(o_1, \ldots, o_{j+1})$ es `ejecutar` de $o_{j+1}$ sobre el resultado de `foldLeft` de los primeros $j$. Por la hipótesis de inducción sobre $m$, ese resultado es $e_j = [\![ o_j ]\!](\cdots [\![ o_1 ]\!](e))$, y por HI sobre $o_{j+1}$ el resultado final es $[\![ o_{j+1} ]\!](e_j)$.
 
-| Paso | Orden | Estado resultante |
-|---|---|---|
-| 0 | — | $(0, 0, \text{Norte})$ |
-| 1 | Avanzar(3) | $(0, 3, \text{Norte})$ |
-| 2 | Girar(Izquierda) | $(0, 3, \text{Oeste})$ |
-| 3 | Avanzar(2) | $(-2, 3, \text{Oeste})$ |
+Por lo tanto $\text{ejecutar}(e, o) = [\![ o ]\!](e)$ para toda orden. $\blacksquare$
 
-## Punto 3: cuantasBasicas y profundidad
+**Ejemplo de comprobación.** Con $o = \text{Repetir}(4, S)$ y $S = (\text{Avanzar}(1), \text{Girar}(\text{Derecha}))$, una vuelta de $S$ desde $(x, y, d)$ lleva a $(x', y', \text{girar}(d, \text{Derecha}))$. Cuatro vueltas, partiendo del norte, suman los cuatro desplazamientos $(0, 1), (1, 0), (0, -1), (-1, 0)$, que dan $(0, 0)$, y cuatro giros a la derecha devuelven la dirección a Norte.
 
-```scala
-def cuantasBasicas(o: Orden): Int = o match {
-  case Avanzar(_)            => 1
-  case Girar(_)              => 1
-  case Repetir(veces, orden) => math.max(veces, 0) * cuantasBasicas(orden)
-  case Secuencia(ordenes)    => ordenes.map(cuantasBasicas).sum
-}
+## 4. `cuantasBasicas` y `profundidad`
 
-def profundidad(o: Orden): Int = o match {
-  case Avanzar(_)         => 1
-  case Girar(_)           => 1
-  case Repetir(_, orden)  => 1 + profundidad(orden)
-  case Secuencia(ordenes) => 1 + ordenes.map(profundidad).foldLeft(0)((a, b) => math.max(a, b))
-}
-```
+**Especificación.**
 
-Traza de `cuantasBasicas(Repetir(4, S))`:
+$$
+\text{cb}(o) = \begin{cases}
+1 & o = \text{Avanzar}(n) \text{ o } o = \text{Girar}(s) \\
+\max(k, 0) \cdot \text{cb}(o') & o = \text{Repetir}(k, o') \\
+\sum_{i=1}^{m} \text{cb}(o_i) & o = \text{Secuencia}(o_1, \ldots, o_m)
+\end{cases}
+$$
 
-1. Repetir(4, S) $\to$ $\max(4, 0) \cdot$ cuantasBasicas(S).
-2. cuantasBasicas(S) $\to$ cuantasBasicas(Avanzar(1)) $+$ cuantasBasicas(Girar(Derecha)) $= 1 + 1 = 2$.
-3. Resultado: $4 \cdot 2 = 8$.
+$$
+\text{prof}(o) = \begin{cases}
+1 & o \text{ es básica} \\
+1 + \text{prof}(o') & o = \text{Repetir}(k, o') \\
+1 + \max(\{0\} \cup \{\text{prof}(o_i)\}) & o = \text{Secuencia}(o_1, \ldots, o_m)
+\end{cases}
+$$
 
-Traza de `profundidad(Repetir(4, S))`:
+**Teorema.** `cuantasBasicas` y `profundidad` calculan $\text{cb}$ y $\text{prof}$ para toda orden.
 
-1. Repetir(4, S) $\to$ $1 +$ profundidad(S).
-2. profundidad(S) $\to$ $1 + \max(1, 1) = 2$.
-3. Resultado: $1 + 2 = 3$.
+**Casos base.** `Avanzar(_)` y `Girar(_)` devuelven $1$ en ambas funciones, igual que la especificación.
 
-La secuencia vacía da $1 + 0 = 1$, porque el máximo de una lista vacía se toma como $0$.
+**Caso `Repetir(k, o')`.** Por HI, `cuantasBasicas(o')` $= \text{cb}(o')$ y `profundidad(o')` $= \text{prof}(o')$. El programa devuelve $\max(k, 0) \cdot \text{cb}(o')$ y $1 + \text{prof}(o')$, que son las especificaciones.
 
-```mermaid
-flowchart TD
-    R["Repetir(4, S)<br/>Profundidad: 3"]
-    S["Secuencia<br/>Profundidad: 2"]
-    A["Avanzar(1)<br/>Profundidad: 1"]
-    G["Girar(Derecha)<br/>Profundidad: 1"]
-    R --> S
-    S --> A
-    S --> G
-```
+**Caso `Secuencia(o_1, ..., o_m)`.** Por HI, cada llamada sobre $o_i$ devuelve el valor de la especificación. `map` las aplica a toda la lista, `sum` suma (da $0$ si $m = 0$) y `foldLeft(0)` con `math.max` calcula el máximo con valor inicial $0$. El resultado coincide con $\sum \text{cb}(o_i)$ y con $1 + \max(\{0\} \cup \{\text{prof}(o_i)\})$. $\blacksquare$
 
-## Punto 4: funciones de alto orden
+**Consistencia con `ejecutar`.** Para $o = \text{Repetir}(4, S)$ el programa da $\text{cb} = 4 \cdot 2 = 8$ y $\text{prof} = 1 + 2 = 3$, como pide el enunciado.
 
-```scala
-def componer(o1: Orden, o2: Orden): Orden = Secuencia(List(o1, o2))
+## 5. `componer`, `rutina`, `aplicarA`, `transformar`
 
-def rutina(pasos: Int)(giro: Sentido)(veces: Int): Orden =
-  Repetir(veces, Secuencia(List(Avanzar(pasos), Girar(giro))))
+### 5.1 `componer`: la rutina compuesta equivale a ejecutar sus partes
 
-def aplicarA(estados: List[Estado], o: Orden): List[Estado] =
-  estados.map(e => ejecutar(e, o))
+**Teorema.** Para todo estado $e$ y órdenes $o_1, o_2$:
+$$\text{ejecutar}(e, \text{componer}(o_1, o_2)) = \text{ejecutar}(\text{ejecutar}(e, o_1), o_2)$$
 
-def transformar(o: Orden, f: Orden => Orden): Orden = o match {
-  case Avanzar(_)            => f(o)
-  case Girar(_)              => f(o)
-  case Repetir(veces, orden) => Repetir(veces, transformar(orden, f))
-  case Secuencia(ordenes)    => Secuencia(ordenes.map(x => transformar(x, f)))
-}
-```
+**Demostración.** Por definición, $\text{componer}(o_1, o_2) = \text{Secuencia}(\text{List}(o_1, o_2))$. Por el caso `Secuencia` de la sección 2, `ejecutar` sobre esa secuencia es `foldLeft` de la lista de dos órdenes empezando en $e$:
 
-- `componer` construye una `Secuencia` de dos elementos.
-- `rutina` está currificada: `rutina(1)(Derecha)` fija los pasos y el giro, y devuelve una función `Int => Orden` que espera el número de repeticiones. `rutina(1)(Derecha)(4)` representa exactamente el cuadrado.
-- `aplicarA` usa `map`: aplica `ejecutar` a cada estado y conserva el orden de la lista.
-- `transformar` recorre la estructura hasta llegar a las órdenes básicas, les aplica `f` y reconstruye `Repetir` y `Secuencia`, conservando el número de repeticiones y el orden.
+$$\text{foldLeft}(e)(o_1, o_2) = \text{ejecutar}(\text{ejecutar}(e, o_1), o_2)$$
 
-Traza de aplicarA(List(inicial, Estado(5, 5, Sur)), Avanzar(2)):
+que es exactamente el lado derecho. $\blacksquare$
 
-| Estado de entrada | Orden | Estado de salida |
-|---|---|---|
-| $(0, 0, \text{Norte})$ | Avanzar(2) | $(0, 2, \text{Norte})$ |
-| $(5, 5, \text{Sur})$ | Avanzar(2) | $(5, 3, \text{Sur})$ |
+**Generalización.** Por inducción sobre el número de composiciones, componer tres órdenes de cualquiera de las dos formas, $\text{componer}(\text{componer}(o_1, o_2), o_3)$ o $\text{componer}(o_1, \text{componer}(o_2, o_3))$, ejecuta $o_1$, luego $o_2$ y luego $o_3$. Es decir, la composición es asociativa en su efecto aunque los términos `Orden` sean distintos.
 
-Traza de transformar(cuadrado, f) con f que duplica los avances:
+### 5.2 `rutina`
 
-1. Repetir(4, S) $\to$ Repetir(4, transformar(S, f)).
-2. transformar(S, f) $\to$ Secuencia(List(f(Avanzar(1)), f(Girar(Derecha)))).
-3. f(Avanzar(1)) $= $ Avanzar(2) y f(Girar(Derecha)) $= $ Girar(Derecha).
-4. Resultado: Repetir(4, Secuencia(List(Avanzar(2), Girar(Derecha)))).
+**Teorema.** $\text{rutina}(p)(g)(v) = \text{Repetir}(v, \text{Secuencia}(\text{List}(\text{Avanzar}(p), \text{Girar}(g))))$.
 
-Con esa orden transformada el robot recorre un cuadrado de lado 2 y también vuelve al origen.
+Es verdadero por la definición del programa: el currificado solo fija $p$ y $g$ y deja $v$ para después. Aplicar `rutina(p)(g)` a $v$ equivale a aplicar `rutina(p)(g)(v)`, porque Scala define `def f(a)(b)(c)` como una función que devuelve funciones de una variable. Con $p = 1$, $g = \text{Derecha}$ y $v = 4$ se obtiene el cuadrado del enunciado, y por la sección 2 deja al robot en el estado de partida.
 
-Traza de posiciones de rutina(2)(Izquierda)(4), que es Repetir(4, Secuencia(List(Avanzar(2), Girar(Izquierda)))) desde $(0, 0, \text{Norte})$:
+### 5.3 `aplicarA`
 
-| Vuelta | Después de Avanzar(2) | Después de Girar(Izquierda) |
-|---|---|---|
-| 1 | $(0, 2, \text{Norte})$ | $(0, 2, \text{Oeste})$ |
-| 2 | $(-2, 2, \text{Oeste})$ | $(-2, 2, \text{Sur})$ |
-| 3 | $(-2, 0, \text{Sur})$ | $(-2, 0, \text{Este})$ |
-| 4 | $(0, 0, \text{Este})$ | $(0, 0, \text{Norte})$ |
+**Teorema.** Para toda lista de estados $L = (e_1, \ldots, e_m)$ y toda orden $o$:
+$\text{aplicarA}(L, o) = (\text{ejecutar}(e_1, o), \ldots, \text{ejecutar}(e_m, o))$.
 
-El robot dibuja un cuadrado de lado 2 hacia la izquierda y vuelve al estado inicial.
+La demostración se realiza por inducción sobre la lista. Para $L = \text{Nil}$, `map` devuelve `Nil`. Para $L = e_1 :: L'$, `map` produce $\text{ejecutar}(e_1, o) :: \text{map}(L')$, y por HI el resto cumple la propiedad. $\blacksquare$
 
-Las funciones del punto 3 miden la orden sin ejecutarla, así que el robot no se mueve en ese punto; su traza es la de los cálculos de arriba.
+### 5.4 `transformar`
 
-## Punto 5: simplificar
+**Especificación.** $\text{transformar}(o, f)$ reemplaza cada orden básica $b$ de $o$ por $f(b)$ y reconstruye las compuestas con el mismo número de veces en `Repetir` y el mismo orden en `Secuencia`.
 
-```scala
-def simplificar(o: Orden): Orden = {
-  def nada(x: Orden): Boolean = x == Secuencia(Nil)
+**Demostración por inducción estructural.**
 
-  def juntar(ordenes: List[Orden]): List[Orden] =
-    ordenes.foldRight(List.empty[Orden]) { (x, resto) =>
-      (x, resto) match {
-        case (Avanzar(a), Avanzar(b) :: cola) => Avanzar(a + b) :: cola
-        case _                                => x :: resto
-      }
-    }
+- Casos base: para `Avanzar` y `Girar` el programa devuelve $f(o)$, que es el reemplazo de la especificación.
+- `Repetir(k, o')`: por HI, `transformar(o', f)` hace el reemplazo en $o'$. El programa devuelve `Repetir(k, transformar(o', f))`, que conserva $k$.
+- `Secuencia(o_1, ..., o_m)`: por HI se cumple en cada $o_i$, y `map` conserva el orden y la longitud de la lista. $\blacksquare$
 
-  def pasada(x: Orden): Orden = x match {
-    case Avanzar(0) => Secuencia(Nil)
-    case Avanzar(_) => x
-    case Girar(_)   => x
-    case Repetir(veces, orden) =>
-      val dentro = pasada(orden)
-      if (veces <= 0) Secuencia(Nil)
-      else if (veces == 1) dentro
-      else Repetir(veces, dentro)
-    case Secuencia(ordenes) =>
-      juntar(ordenes.map(pasada).filterNot(nada)) match {
-        case Nil          => Secuencia(Nil)
-        case unica :: Nil => unica
-        case varias       => Secuencia(varias)
-      }
-  }
+**Caso particular.** Con $f = \text{identidad}$, $\text{transformar}(o, f) = o$, que también se demuestra por inducción sustituyendo $f(b) = b$ en cada caso.
 
-  val siguiente = pasada(o)
-  if (siguiente == o) o else simplificar(siguiente)
-}
-```
+## 6. `simplificar` no cambia el resultado
 
-`pasada` simplifica la orden una sola vez, de adentro hacia afuera. `simplificar` repite `pasada` hasta que una ejecución ya no modifica la orden, tal como indica el enunciado al decir «tantas veces como haga falta». Las reglas se aplican así:
+**Teorema.** Para toda orden $o$ y todo estado $e$:
+$$\text{ejecutar}(e, o) = \text{ejecutar}(e, \text{simplificar}(o))$$
 
-| Regla | Dónde |
-|---|---|
-| 1. Avanzar(0) y Repetir(0, _) son Secuencia(Nil) | casos Avanzar(0) y veces <= 0 |
-| 2. Dos Avanzar seguidos se juntan | juntar |
-| 3. Repetir(1, o) es o | veces == 1 |
-| 4. Una secuencia de un elemento es ese elemento | caso unica :: Nil |
-| 5. Las órdenes que no hacen nada se quitan | filterNot(nada) |
+Como `simplificar` consiste en repetir `pasada`, basta con demostrar que una llamada a `pasada` conserva el resultado y, después, concluir por inducción sobre el número de pasadas.
 
-### Traza de una orden que necesita más de una pasada
+### 6.1 Equivalencia regla por regla
 
-Sea
+Se escribe $o \equiv o'$ cuando $\forall e : \text{ejecutar}(e, o) = \text{ejecutar}(e, o')$. Se usa que $\equiv$ es una congruencia respecto a `Repetir` y `Secuencia`: si se cambian las órdenes contenidas por otras $\equiv$, la orden que las contiene sigue siendo $\equiv$. Esto se sigue directamente del teorema de la sección 2, porque `ejecutar` de una compuesta solo depende del efecto de sus partes.
 
-$$o = \texttt{Secuencia(List(Avanzar(1), Repetir(1, Secuencia(List(Avanzar(0), Avanzar(2)))), Avanzar(-3)))}$$
+**Regla 1a: $\text{Avanzar}(0) \equiv \text{Secuencia}(\text{Nil})$.** Avanzar $0$ casillas suma $0$ a la coordenada correspondiente en cualquier dirección y deja la dirección igual: $\text{ejecutar}(e, \text{Avanzar}(0)) = e$. La secuencia vacía devuelve $e$.
 
-**Primera pasada.** Se simplifican los elementos internos de la secuencia:
+**Regla 1b: $\text{Repetir}(k, o') \equiv \text{Secuencia}(\text{Nil})$ si $k \leq 0$.** Por la sección 3, `ejecutar` de un `Repetir` con $k \leq 0$ devuelve $e$ sin importar $o'$.
 
-1. Avanzar(1) se queda igual.
-2. Repetir(1, Secuencia(List(Avanzar(0), Avanzar(2)))): dentro, Avanzar(0) pasa a Secuencia(Nil) y se quita; queda una lista de un elemento, que se vuelve Avanzar(2). Como veces == 1, el Repetir se reemplaza por Avanzar(2).
-3. Avanzar(-3) se queda igual.
+**Regla 2: $\text{Secuencia}(\ldots, \text{Avanzar}(a), \text{Avanzar}(b), \ldots) \equiv \text{Secuencia}(\ldots, \text{Avanzar}(a + b), \ldots)$.** Los dos avances consecutivos se ejecutan con la misma dirección, porque `Avanzar` no la cambia. Sea $d$ esa dirección. En la coordenada que corresponde a $d$, el efecto de los dos avances es sumar $a$ y luego $b$ (o restar, según la dirección), que es sumar $a + b$ (o restar $a + b$). La otra coordenada y la dirección no cambian. Por lo tanto, $\text{ejecutar}(\text{ejecutar}(e, \text{Avanzar}(a)), \text{Avanzar}(b)) = \text{ejecutar}(e, \text{Avanzar}(a + b))$. Como se sustituyen dos elementos contiguos de la lista por uno equivalente, `foldLeft` produce el mismo estado antes y después de ese par; por tanto, el resto de la secuencia recibe el mismo estado. Además, `juntar` recorre la lista de derecha a izquierda, por lo que una racha de avances $a_1, \ldots, a_j$ se vuelve $\text{Avanzar}(a_1 + \cdots + a_j)$ aplicando esta equivalencia $j - 1$ veces.
 
-La lista queda List(Avanzar(1), Avanzar(2), Avanzar(-3)) y juntar la reduce a List(Avanzar(0)), que por tener un solo elemento se vuelve Avanzar(0).
+**Regla 3: $\text{Repetir}(1, o') \equiv o'$.** Por la sección 3, `ejecutar(e, Repetir(1, o'))` es `ejecutar(ejecutar(e, o'), Repetir(0, o'))`, y como $0 \leq 0$ el segundo paso devuelve su argumento. El resultado es `ejecutar(e, o')`.
 
-**Segunda pasada.** `Avanzar(0)` se convierte en `Secuencia(Nil)`. Esta regla solo puede aplicarse después de sumar los pasos; por eso no basta con una sola pasada.
+**Regla 4: $\text{Secuencia}(\text{List}(o')) \equiv o'$.** `foldLeft` con un solo elemento es `ejecutar(e, o')`.
 
-**Tercera pasada.** `pasada(Secuencia(Nil))` devuelve `Secuencia(Nil)`, que es igual a la entrada; por tanto, la recursión termina.
+**Regla 5: quitar de una secuencia una orden $z \equiv \text{Secuencia}(\text{Nil})$.** Si $z$ no hace nada, entonces $\text{ejecutar}(e', z) = e'$ para todo $e'$, y en el `foldLeft` el estado pasa por $z$ sin cambiar. Quitar $z$ de la lista no altera el estado que reciben las órdenes siguientes. En el programa, `nada(x)` solo reconoce `Secuencia(Nil)`, que cumple $z \equiv \text{Secuencia}(\text{Nil})$ por definición.
 
-| Pasada | Orden resultante |
-|---|---|
-| 0 (entrada) | Secuencia(List(Avanzar(1), Repetir(1, Secuencia(List(Avanzar(0), Avanzar(2)))), Avanzar(-3))) |
-| 1 | Avanzar(0) |
-| 2 | Secuencia(Nil) |
-| 3 | Secuencia(Nil) (no cambia, se detiene) |
+### 6.2 Una pasada conserva el resultado
 
-```mermaid
-flowchart TD
-    O["Orden original"]
-    P1["Pasada 1<br/>Avanzar(0)"]
-    P2["Pasada 2<br/>Secuencia(Nil)"]
-    F["Pasada 3<br/>Sin cambios: termina"]
-    O -->|"Simplifica y suma avances"| P1
-    P1 -->|"Avanzar(0) se elimina"| P2
-    P2 -->|"La orden ya es estable"| F
-```
+**Lema.** Para toda orden $o$: $\text{pasada}(o) \equiv o$.
 
-Comprobación con el robot: la orden original desplaza al robot $1 + 2 - 3 = 0$ casillas sin girar. `Secuencia(Nil)` tampoco produce desplazamiento. Desde $(0, 0, \text{Norte})$, ambas órdenes terminan en $(0, 0, \text{Norte})$.
+Por inducción estructural sobre $o$:
+
+- `Avanzar(0)`: `pasada` devuelve `Secuencia(Nil)`; vale por la regla 1a.
+- `Avanzar(n)` con $n \neq 0$ y `Girar(s)`: `pasada` devuelve la misma orden.
+- `Repetir(k, o')`: por HI, $\text{pasada}(o') \equiv o'$. Hay tres posibilidades:
+    - $k \leq 0$: se devuelve `Secuencia(Nil)`; vale por la regla 1b.
+    - $k = 1$: se devuelve $\text{pasada}(o') \equiv o'$, y $\text{Repetir}(1, o') \equiv o'$ por la regla 3.
+    - $k \geq 2$: se devuelve `Repetir(k, pasada(o'))`, que es $\equiv$ a `Repetir(k, o')` por congruencia.
+- `Secuencia(o_1, ..., o_m)`: por HI, $\text{pasada}(o_i) \equiv o_i$ para cada $i$, así que `Secuencia(pasada(o_1), ..., pasada(o_m))` es $\equiv$ a la original. Luego se quitan las que valen `Secuencia(Nil)` (regla 5), se juntan los avances contiguos (regla 2) y, según quede la lista, se devuelve `Secuencia(Nil)` si es vacía (que es el efecto de la lista vacía), el único elemento si hay uno (regla 4) o la secuencia con varios. En cada paso se cambió por algo $\equiv$. $\blacksquare$
+
+### 6.3 Conclusión
+
+`simplificar(o)` es `o` o es `simplificar(pasada(o))`. Por inducción sobre el número de llamadas, $\text{simplificar}(o) \equiv \text{pasada}(o) \equiv o$ usando el lema y la transitividad de $\equiv$. Por lo tanto $\text{ejecutar}(e, o) = \text{ejecutar}(e, \text{simplificar}(o))$ para todo $e$. $\blacksquare$
+
+### 6.4 Terminación
+
+Se define la medida $m(o) = \text{nodos}(o) + \text{avanzares}(o)$, donde $\text{nodos}$ cuenta todos los constructores de la orden y $\text{avanzares}$ cuenta los `Avanzar`.
+
+- Ninguna regla aumenta $m$.
+- La regla 1a no cambia $\text{nodos}$ pero quita un `Avanzar`, así que $m$ baja en $1$.
+- Las reglas 1b, 2, 3, 4 y 5 eliminan al menos un nodo, y $\text{avanzares}$ no sube.
+
+Por lo tanto, $m(\text{pasada}(o)) \leq m(o)$, con desigualdad estricta cuando $\text{pasada}(o) \neq o$. Como $m$ toma valores naturales, la cadena de pasadas no puede bajar para siempre y tiene que llegar a una orden que `pasada` ya no cambia, momento en el que `simplificar` se detiene.
+
+### 6.5 Ejemplo
+
+Para $o = \text{Secuencia}(\text{Avanzar}(1), \text{Repetir}(1, \text{Secuencia}(\text{Avanzar}(0), \text{Avanzar}(2))), \text{Avanzar}(-3))$ el informe de proceso muestra que `simplificar` llega a `Secuencia(Nil)`. En efecto, el robot avanza $1 + 2 - 3 = 0$ casillas en la dirección en que mira, que es el efecto de `Secuencia(Nil)`.
