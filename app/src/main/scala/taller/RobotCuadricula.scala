@@ -27,12 +27,12 @@ class RobotCuadricula {
     case (Sur, Izquierda)   => Este
     case (Este, Izquierda)  => Norte
   }
- 
+
 
   // Punto 2 -------------------------------------------------------------------
 
-  /** El estado que resulta de aplicarle la orden al estado dado. */
-    def ejecutar(e: Estado, o: Orden): Estado = o match {
+
+  def ejecutar(e: Estado, o: Orden): Estado = o match {
     case Avanzar(n) =>
       e.mira match {
         case Norte => Estado(e.x, e.y + n, e.mira)
@@ -50,28 +50,80 @@ class RobotCuadricula {
 
   // Punto 3 -------------------------------------------------------------------
 
-  /** Cuántos Avanzar y Girar llega a ejecutar la orden, contando repeticiones. */
-  def cuantasBasicas(o: Orden): Int = ???
 
-  /** Niveles de anidamiento: una básica tiene 1, una compuesta uno más que la más honda. */
-  def profundidad(o: Orden): Int = ???
+  def cuantasBasicas(o: Orden): Int = o match {
+    case Avanzar(_) =>1
+    case Girar(_) => 1
+    case Repetir(veces, orden) => math.max(veces, 0) * cuantasBasicas(orden)
+    case Secuencia(ordenes) => ordenes.map(cuantasBasicas).sum
+
+  }
+
+
+  def profundidad(o: Orden): Int = o match {
+    case Avanzar(_) => 1
+    case Girar(_) => 1
+    case Repetir(_, orden) => 1 + profundidad(orden)
+    case Secuencia(ordenes) => 1 + ordenes.map(profundidad).foldLeft(0)((a,b) => math.max(a,b))
+  }
+
 
   // Punto 4 -------------------------------------------------------------------
 
-  /** La secuencia de las dos órdenes. */
-  def componer(o1: Orden, o2: Orden): Orden = ???
 
-  /** Currificada: fijados los pasos y el giro, queda una función de las veces. */
-  def rutina(pasos: Int)(giro: Sentido)(veces: Int): Orden = ???
+  def componer(o1: Orden, o2: Orden): Orden = Secuencia(List(o1, o2))
 
-  /** La misma orden ejecutada sobre cada uno de los estados. */
-  def aplicarA(estados: List[Estado], o: Orden): List[Estado] = ???
 
-  /** Reemplaza cada orden básica por f(orden), respetando la estructura de las compuestas. */
-  def transformar(o: Orden, f: Orden => Orden): Orden = ???
+  def rutina(pasos: Int)(giro: Sentido)(veces: Int): Orden = Repetir(veces,Secuencia(List(Avanzar(pasos),Girar(giro))))
+
+
+  def aplicarA(estados: List[Estado], o: Orden): List[Estado] = estados.map(e => ejecutar(e,o))
+
+
+  def transformar(o: Orden, f: Orden => Orden): Orden = o match{
+    case Avanzar(_) => f(o)
+    case Girar(_) => f(o)
+    case Repetir(veces, orden) => Repetir(veces, transformar(orden, f))
+    case Secuencia(ordenes) => Secuencia(ordenes.map(x => transformar(x,f)))
+
+  }
 
   // Punto 5 -------------------------------------------------------------------
 
-  /** Una orden equivalente más corta, con las reglas del enunciado. */
-  def simplificar(o: Orden): Orden = ???
-}
+
+  def simplificar(o: Orden): Orden = {
+
+    // Una orden que ya no hace nada
+    def nada(x: Orden): Boolean = x == Secuencia(Nil)
+
+    // Regla 2: junta los (Avanzar) contiguos de una lista.
+    def juntar(ordenes: List[Orden]): List[Orden] =
+      ordenes.foldRight(List.empty[Orden]) { (x, resto) =>
+        (x, resto) match {
+          case (Avanzar(a), Avanzar(b) :: cola) => Avanzar(a + b) :: cola
+          case _                                => x :: resto
+        }
+      }
+
+
+    def pasada(x: Orden): Orden = x match {
+      case Avanzar(0)  => Secuencia(Nil)
+      case Avanzar(_)  => x
+      case Girar(_)    => x
+      case Repetir(veces, orden) =>
+        val dentro = pasada(orden)
+        veces match {
+          case 1                => dentro
+          case v if v <= 0      => Secuencia(Nil)
+          case _                => Repetir(veces, dentro)
+        }
+      case Secuencia(ordenes) =>
+        juntar(ordenes.map(pasada).filterNot(nada)) match {
+          case Nil         => Secuencia(Nil)
+          case unica :: Nil => unica
+          case varias      => Secuencia(varias)
+        }
+    }
+    val siguiente = pasada(o)
+    if (siguiente == o) o else simplificar(siguiente)
+  }}

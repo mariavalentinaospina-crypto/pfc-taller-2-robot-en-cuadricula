@@ -1,3 +1,4 @@
+
 package taller
 
 import org.scalatest.funsuite.AnyFunSuite
@@ -10,14 +11,28 @@ class RobotCuadriculaTest extends AnyFunSuite {
   val r = new RobotCuadricula()
   import r._
 
+  // Corrección: definir las cuatro direcciones y su tipo.
+  val todas: List[Direccion] = List(Norte, Este, Sur, Oeste)
+
   val cuadrado = Repetir(4, Secuencia(List(Avanzar(1), Girar(Derecha))))
 
   // Punto 1 -------------------------------------------------------------------
 
-  test("girar: Norte a la derecha da Este") { assert(girar(Norte, Derecha) == Este) }
-  test("girar: Norte a la izquierda da Oeste") { assert(girar(Norte, Izquierda) == Oeste) }
-  test("girar: Oeste a la derecha da Norte") { assert(girar(Oeste, Derecha) == Norte) }
-  test("girar: Sur a la izquierda da Este") { assert(girar(Sur, Izquierda) == Este) }
+  test("girar: Norte a la derecha da Este") {
+    assert(girar(Norte, Derecha) == Este)
+  }
+
+  test("girar: Norte a la izquierda da Oeste") {
+    assert(girar(Norte, Izquierda) == Oeste)
+  }
+
+  test("girar: Oeste a la derecha da Norte") {
+    assert(girar(Oeste, Derecha) == Norte)
+  }
+
+  test("girar: Sur a la izquierda da Este") {
+    assert(girar(Sur, Izquierda) == Este)
+  }
 
   test("girar: cuatro giros al mismo lado vuelven al principio") {
     val cuatro = List(Derecha, Derecha, Derecha, Derecha)
@@ -28,20 +43,34 @@ class RobotCuadriculaTest extends AnyFunSuite {
   test("girar: un giro y su contrario se cancelan") {
     assert(girar(girar(Este, Derecha), Izquierda) == Este)
   }
+
   // Punto 1 (propias) ---------------------------------------------------------
 
-  test("propia girar: Este a la derecha da Sur") { assert(girar(Este, Derecha) == Sur) }
-  test("propia girar: Sur a la derecha da Oeste") { assert(girar(Sur, Derecha) == Oeste) }
-  test("propia girar: Este a la izquierda da Norte") { assert(girar(Este, Izquierda) == Norte) }
-  test("propia girar: Oeste a la izquierda da Sur") { assert(girar(Oeste, Izquierda) == Sur) }
+  test("propia girar: Este a la derecha da Sur") {
+    assert(girar(Este, Derecha) == Sur)
+  }
+
+  test("propia girar: Sur a la derecha da Oeste") {
+    assert(girar(Sur, Derecha) == Oeste)
+  }
+
+  test("propia girar: Este a la izquierda da Norte") {
+    assert(girar(Este, Izquierda) == Norte)
+  }
+
+  test("propia girar: Oeste a la izquierda da Sur") {
+    assert(girar(Oeste, Izquierda) == Sur)
+  }
 
   test("propia girar: dos giros a la derecha y dos a la izquierda coinciden en toda dirección") {
-    assert(todas.forall(d =>
-      girar(girar(d, Derecha), Derecha) == girar(girar(d, Izquierda), Izquierda)))
+    assert(todas.forall((d: Direccion) =>
+      girar(girar(d, Derecha), Derecha) ==
+        girar(girar(d, Izquierda), Izquierda)))
   }
 
   test("propia girar: girar siempre cambia la dirección") {
-    assert(todas.forall(d => girar(d, Derecha) != d && girar(d, Izquierda) != d))
+    assert(todas.forall((d: Direccion) =>
+      girar(d, Derecha) != d && girar(d, Izquierda) != d))
   }
 
   // Punto 2 -------------------------------------------------------------------
@@ -79,7 +108,7 @@ class RobotCuadriculaTest extends AnyFunSuite {
     assert(ejecutar(Estado(5, 5, Oeste), Avanzar(2)) == Estado(3, 5, Oeste))
   }
 
-    // Punto 2 (propias) ---------------------------------------------------------
+  // Punto 2 (propias) ---------------------------------------------------------
 
   test("propia ejecutar: avanzar cuatro mirando al este desde (1, 1)") {
     assert(ejecutar(Estado(1, 1, Este), Avanzar(4)) == Estado(5, 1, Este))
@@ -110,6 +139,7 @@ class RobotCuadriculaTest extends AnyFunSuite {
   test("propia ejecutar: dos cuadrados seguidos vuelven al punto de partida") {
     assert(ejecutar(inicial, Repetir(2, cuadrado)) == inicial)
   }
+
   // Punto 3 -------------------------------------------------------------------
 
   test("cuantasBasicas: una orden básica cuenta uno") {
@@ -146,6 +176,48 @@ class RobotCuadriculaTest extends AnyFunSuite {
 
   test("profundidad: manda la rama más honda") {
     assert(profundidad(Secuencia(List(Avanzar(1), cuadrado))) == 4)
+  }
+
+  // Punto 3 (propias) ---------------------------------------------------------
+
+  test("propia cuantasBasicas: un giro cuenta uno") {
+    assert(cuantasBasicas(Girar(Izquierda)) == 1)
+  }
+
+  test("propia cuantasBasicas: tres repeticiones de tres básicas") {
+    assert(cuantasBasicas(Repetir(3, Secuencia(List(Avanzar(1), Avanzar(2), Girar(Derecha))))) == 9)
+  }
+
+  test("propia cuantasBasicas: repetir dos veces el cuadrado ejecuta dieciséis") {
+    assert(cuantasBasicas(Repetir(2, cuadrado)) == 16)
+  }
+
+  test("propia cuantasBasicas: una básica seguida del cuadrado suma nueve") {
+    assert(cuantasBasicas(Secuencia(List(Avanzar(1), cuadrado))) == 9)
+  }
+
+  test("propia cuantasBasicas: repetir con veces negativas no ejecuta nada") {
+    assert(cuantasBasicas(Repetir(-3, Avanzar(1))) == 0)
+  }
+
+  test("propia profundidad: un giro tiene profundidad 1") {
+    assert(profundidad(Girar(Izquierda)) == 1)
+  }
+
+  test("propia profundidad: repetir una básica tiene profundidad 2") {
+    assert(profundidad(Repetir(2, Avanzar(1))) == 2)
+  }
+
+  test("propia profundidad: repetir el cuadrado tiene profundidad 4") {
+    assert(profundidad(Repetir(2, cuadrado)) == 4)
+  }
+
+  test("propia profundidad: secuencias anidadas vacías cuentan cada nivel") {
+    assert(profundidad(Secuencia(List(Secuencia(List(Secuencia(Nil)))))) == 3)
+  }
+
+  test("propia profundidad: gana la rama más honda de la secuencia") {
+    assert(profundidad(Secuencia(List(Avanzar(1), Secuencia(List(Girar(Derecha)))))) == 3)
   }
 
   // Punto 4 -------------------------------------------------------------------
@@ -190,6 +262,73 @@ class RobotCuadriculaTest extends AnyFunSuite {
     assert(transformar(cuadrado, (o: Orden) => o) == cuadrado)
   }
 
+  // Punto 4 (propias) ---------------------------------------------------------
+
+  test("propia componer: la vacía con otra orden queda como secuencia de dos") {
+    assert(componer(Secuencia(Nil), Avanzar(1)) ==
+      Secuencia(List(Secuencia(Nil), Avanzar(1))))
+  }
+
+  test("propia componer: componer dos veces equivale a ejecutar las tres partes") {
+    val e = Estado(2, -1, Oeste)
+    val compuesta = componer(componer(Avanzar(3), Girar(Izquierda)), Avanzar(2))
+    assert(ejecutar(e, compuesta) ==
+      ejecutar(ejecutar(ejecutar(e, Avanzar(3)), Girar(Izquierda)), Avanzar(2)))
+  }
+
+  test("propia rutina: dos pasos, izquierda, tres veces") {
+    assert(rutina(2)(Izquierda)(3) ==
+      Repetir(3, Secuencia(List(Avanzar(2), Girar(Izquierda)))))
+  }
+
+  test("propia rutina: sin pasos solo gira, cinco giros dejan al robot mirando al este") {
+    val sinPasos = rutina(0)(Derecha) _
+    assert(ejecutar(inicial, sinPasos(5)) == Estado(0, 0, Este))
+  }
+
+  test("propia rutina: fijar pasos y giro permite reutilizar la función con distintas veces") {
+    val cuadradoDe = rutina(2)(Izquierda) _
+    assert(ejecutar(inicial, cuadradoDe(4)) == inicial)
+    assert(ejecutar(inicial, cuadradoDe(1)) == Estado(0, 2, Oeste))
+  }
+
+  test("propia aplicarA: girar sobre varios estados") {
+    assert(aplicarA(List(Estado(1, 1, Este), Estado(0, 0, Oeste)), Girar(Derecha)) ==
+      List(Estado(1, 1, Sur), Estado(0, 0, Norte)))
+  }
+
+  test("propia aplicarA: conserva el orden y el tamaño de la lista") {
+    val estados = List(Estado(0, 0, Norte), Estado(1, 0, Norte), Estado(2, 0, Norte))
+    assert(aplicarA(estados, Avanzar(1)) ==
+      List(Estado(0, 1, Norte), Estado(1, 1, Norte), Estado(2, 1, Norte)))
+  }
+
+  test("propia transformar: cambiar los giros deja los avances") {
+    val f: Orden => Orden = {
+      case Girar(_) => Girar(Derecha)
+      case otra => otra
+    }
+    assert(transformar(Secuencia(List(Girar(Izquierda), Avanzar(1))), f) ==
+      Secuencia(List(Girar(Derecha), Avanzar(1))))
+  }
+
+  test("propia transformar: llega hasta las básicas más hondas") {
+    val f: Orden => Orden = {
+      case Avanzar(n) => Avanzar(n + 1)
+      case otra => otra
+    }
+    assert(transformar(Repetir(2, Secuencia(List(Repetir(3, Avanzar(3))))), f) ==
+      Repetir(2, Secuencia(List(Repetir(3, Avanzar(4))))))
+  }
+
+  test("propia transformar: no toca el número de veces de repetir") {
+    val f: Orden => Orden = {
+      case Avanzar(n) => Avanzar(-n)
+      case otra => otra
+    }
+    assert(transformar(Repetir(7, Avanzar(2)), f) == Repetir(7, Avanzar(-2)))
+  }
+
   // Punto 5 -------------------------------------------------------------------
 
   test("simplificar: dos avances seguidos se juntan") {
@@ -218,23 +357,27 @@ class RobotCuadriculaTest extends AnyFunSuite {
   }
 
   test("simplificar: es idempotente") {
-    val ordenes = List(cuadrado,
+    val ordenes = List(
+      cuadrado,
       Secuencia(List(Avanzar(1), Avanzar(2), Girar(Derecha), Avanzar(3))),
       Repetir(1, Secuencia(List(Avanzar(0), Avanzar(4)))),
-      Secuencia(List(Secuencia(Nil), Repetir(0, Avanzar(3)))))
+      Secuencia(List(Secuencia(Nil), Repetir(0, Avanzar(3))))
+    )
     assert(ordenes.forall(o => simplificar(simplificar(o)) == simplificar(o)))
   }
 
   test("simplificar: no cambia el resultado de ejecutar") {
     val estados = List(inicial, Estado(3, -2, Este), Estado(-1, 4, Sur))
-    val ordenes = List(cuadrado,
+    val ordenes = List(
+      cuadrado,
       Secuencia(List(Avanzar(2), Avanzar(3))),
       Secuencia(List(Avanzar(1), Avanzar(2), Girar(Derecha), Avanzar(3))),
       Repetir(1, Avanzar(4)),
       Repetir(0, Avanzar(9)),
       Secuencia(List(Avanzar(0), Girar(Derecha))),
       Secuencia(List(Avanzar(2), Avanzar(-2))),
-      Repetir(3, Secuencia(List(Repetir(1, Avanzar(2)), Girar(Izquierda)))))
+      Repetir(3, Secuencia(List(Repetir(1, Avanzar(2)), Girar(Izquierda))))
+    )
     assert(ordenes.forall(o =>
       estados.forall(e => ejecutar(e, o) == ejecutar(e, simplificar(o)))))
   }
@@ -242,4 +385,59 @@ class RobotCuadriculaTest extends AnyFunSuite {
   test("simplificar: el anidamiento interior también se reduce") {
     assert(simplificar(Repetir(3, Repetir(1, Avanzar(2)))) == Repetir(3, Avanzar(2)))
   }
+
+  // Punto 5 (propias) ---------------------------------------------------------
+
+  test("propia simplificar: reduce por dentro de un Repetir") {
+    assert(
+      simplificar(
+        Repetir(2, Secuencia(List(Avanzar(1), Avanzar(1))))
+      ) == Repetir(2, Avanzar(2))
+    )
+  }
+
+  test("propia simplificar: una secuencia de un solo elemento es ese elemento") {
+    assert(simplificar(Secuencia(List(Avanzar(1)))) == Avanzar(1))
+  }
+
+  test("propia simplificar: quita las órdenes que no hacen nada entre dos giros") {
+    assert(simplificar(Secuencia(List(Girar(Izquierda), Secuencia(Nil), Girar(Derecha)))) ==
+      Secuencia(List(Girar(Izquierda), Girar(Derecha))))
+  }
+
+  test("propia simplificar: repetir una vez anidado desaparece") {
+    assert(simplificar(Repetir(1, Repetir(1, Girar(Derecha)))) == Girar(Derecha))
+  }
+
+  test("propia simplificar: quitar un Repetir(0) junta los avances que quedan contiguos") {
+    assert(simplificar(Secuencia(List(Avanzar(1), Repetir(0, Girar(Derecha)), Avanzar(2)))) ==
+      Avanzar(3))
+  }
+
+  test("propia simplificar: necesita varias pasadas para llegar a Secuencia(Nil)") {
+    val o = Secuencia(List(
+      Avanzar(1),
+      Repetir(1, Secuencia(List(Avanzar(0), Avanzar(2)))),
+      Avanzar(-3)
+    ))
+    assert(simplificar(o) == Secuencia(Nil))
+  }
+
+  test("propia simplificar: no junta avances separados por un giro") {
+    val o = Secuencia(List(Avanzar(1), Girar(Izquierda), Avanzar(1)))
+    assert(simplificar(o) == o)
+  }
+
+  test("propia simplificar: conserva el resultado de ejecutar en órdenes anidadas") {
+    val estados = List(inicial, Estado(-2, 5, Oeste), Estado(4, 4, Sur))
+    val ordenes = List(
+      Secuencia(List(Avanzar(1), Repetir(1, Secuencia(List(Avanzar(0), Avanzar(2)))), Avanzar(-3))),
+      Repetir(2, Secuencia(List(Avanzar(1), Avanzar(1), Girar(Izquierda)))),
+      Secuencia(List(Secuencia(List(Avanzar(2), Avanzar(3))), Girar(Derecha), Repetir(0, Avanzar(7)))),
+      Repetir(3, Repetir(1, Secuencia(List(Girar(Derecha)))))
+    )
+    assert(ordenes.forall(o =>
+      estados.forall(e => ejecutar(e, o) == ejecutar(e, simplificar(o)))))
+  }
 }
+
