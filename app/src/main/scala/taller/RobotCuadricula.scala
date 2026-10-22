@@ -88,8 +88,45 @@ class RobotCuadricula {
 
   }
 
-  // Punto 5 -------------------------------------------------------------------
+// Punto 5 -------------------------------------------------------------------
 
   /** Una orden equivalente más corta, con las reglas del enunciado. */
-  def simplificar(o: Orden): Orden = ???
+  def simplificar(o: Orden): Orden = {
+
+    // Una orden que ya no hace nada.
+    def nada(x: Orden): Boolean = x == Secuencia(Nil)
+
+    // Regla 2: junta los Avanzar contiguos de una lista.
+    def juntar(ordenes: List[Orden]): List[Orden] =
+      ordenes.foldRight(List.empty[Orden]) { (x, resto) =>
+        (x, resto) match {
+          case (Avanzar(a), Avanzar(b) :: cola) => Avanzar(a + b) :: cola
+          case _                                => x :: resto
+        }
+      }
+
+    // Una pasada: reglas 1 a 5, de adentro hacia afuera.
+    def pasada(x: Orden): Orden = x match {
+      case Avanzar(0)  => Secuencia(Nil)
+      case Avanzar(_)  => x
+      case Girar(_)    => x
+      case Repetir(veces, orden) =>
+        val dentro = pasada(orden)
+        veces match {
+          case 1                => dentro
+          case v if v <= 0      => Secuencia(Nil)
+          case _                => Repetir(veces, dentro)
+        }
+      case Secuencia(ordenes) =>
+        juntar(ordenes.map(pasada).filterNot(nada)) match {
+          case Nil         => Secuencia(Nil)
+          case unica :: Nil => unica
+          case varias      => Secuencia(varias)
+        }
+    }
+
+    // Se repite hasta que una pasada ya no cambie nada.
+    val siguiente = pasada(o)
+    if (siguiente == o) o else simplificar(siguiente)
+  }
 }

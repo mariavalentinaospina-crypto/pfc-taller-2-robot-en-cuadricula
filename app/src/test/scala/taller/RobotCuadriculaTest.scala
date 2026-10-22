@@ -351,4 +351,52 @@ class RobotCuadriculaTest extends AnyFunSuite {
   test("simplificar: el anidamiento interior también se reduce") {
     assert(simplificar(Repetir(3, Repetir(1, Avanzar(2)))) == Repetir(3, Avanzar(2)))
   }
+ // Punto 5 (propias) ---------------------------------------------------------
+
+  test("propia simplificar: reduce por dentro de un Repetir") {
+    assert(simplificar(Repetir(2, Secuencia(List(Avanzar(1), Avanzar(1))))) ==
+      Repetir(2, Avanzar(2)))
+  }
+
+  test("propia simplificar: una secuencia de un solo elemento es ese elemento") {
+    assert(simplificar(Secuencia(List(Avanzar(1)))) == Avanzar(1))
+  }
+
+  test("propia simplificar: quita las órdenes que no hacen nada entre dos giros") {
+    assert(simplificar(Secuencia(List(Girar(Izquierda), Secuencia(Nil), Girar(Derecha)))) ==
+      Secuencia(List(Girar(Izquierda), Girar(Derecha))))
+  }
+
+  test("propia simplificar: repetir una vez anidado desaparece") {
+    assert(simplificar(Repetir(1, Repetir(1, Girar(Derecha)))) == Girar(Derecha))
+  }
+
+  test("propia simplificar: quitar un Repetir(0) junta los avances que quedan contiguos") {
+    assert(simplificar(Secuencia(List(Avanzar(1), Repetir(0, Girar(Derecha)), Avanzar(2)))) ==
+      Avanzar(3))
+  }
+
+  test("propia simplificar: necesita varias pasadas para llegar a Secuencia(Nil)") {
+    val o = Secuencia(List(Avanzar(1),
+      Repetir(1, Secuencia(List(Avanzar(0), Avanzar(2)))),
+      Avanzar(-3)))
+    assert(simplificar(o) == Secuencia(Nil))
+  }
+
+  test("propia simplificar: no junta avances separados por un giro") {
+    val o = Secuencia(List(Avanzar(1), Girar(Izquierda), Avanzar(1)))
+    assert(simplificar(o) == o)
+  }
+
+  test("propia simplificar: conserva el resultado de ejecutar en órdenes anidadas") {
+    val estados = List(inicial, Estado(-2, 5, Oeste), Estado(4, 4, Sur))
+    val ordenes = List(
+      Secuencia(List(Avanzar(1), Repetir(1, Secuencia(List(Avanzar(0), Avanzar(2)))), Avanzar(-3))),
+      Repetir(2, Secuencia(List(Avanzar(1), Avanzar(1), Girar(Izquierda)))),
+      Secuencia(List(Secuencia(List(Avanzar(2), Avanzar(3))), Girar(Derecha), Repetir(0, Avanzar(7)))),
+      Repetir(3, Repetir(1, Secuencia(List(Girar(Derecha)))))
+    )
+    assert(ordenes.forall(o =>
+      estados.forall(e => ejecutar(e, o) == ejecutar(e, simplificar(o)))))
+  }
 }
